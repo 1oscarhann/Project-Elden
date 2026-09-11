@@ -97,7 +97,12 @@ func award_xp(amount: int) -> void:
 			_level_up(member)
 
 
-func _level_up(member: PartyMemberData) -> void:
+## `announce` is false only when from_dict() is replaying the growth curve to
+## restore a loaded level — that isn't gameplay, so it must not fire the
+## level-up signal N times (a "LEVEL UP!" toast/jingle per level, all at once,
+## the moment a save finishes loading). Real level-ups from award_xp() always
+## announce.
+func _level_up(member: PartyMemberData, announce: bool = true) -> void:
 	member.level += 1
 	member.max_hp += member.hp_growth
 	member.max_sp += member.sp_growth
@@ -114,7 +119,8 @@ func _level_up(member: PartyMemberData) -> void:
 
 	# Level-ups top you up — it's the pacing release valve between fights.
 	vitals[member.id] = {"hp": member.max_hp, "sp": member.max_sp}
-	party_member_leveled.emit(member, member.level, learned)
+	if announce:
+		party_member_leveled.emit(member, member.level, learned)
 
 
 func add_gold(amount: int) -> void:
@@ -212,7 +218,7 @@ func from_dict(data: Dictionary) -> bool:
 		party.append(member)
 		experience[member.id] = int(entry.get("xp", 0))
 		while member.level < target_level:
-			_level_up(member)
+			_level_up(member, false)
 		vitals[member.id] = {
 			"hp": clampi(int(entry.get("hp", member.max_hp)), 0, member.max_hp),
 			"sp": clampi(int(entry.get("sp", member.max_sp)), 0, member.max_sp),

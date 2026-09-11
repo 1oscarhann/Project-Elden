@@ -44,18 +44,24 @@ func slot_exists(slot: int) -> bool:
 
 
 ## Header info for a save-select screen without deserialising the whole blob.
+##
+## Every number is coerced to int: JSON.parse_string() (via _read_slot) hands
+## every number back as a float, so without this a save-select screen would
+## render "Gold: 931.0" / "Lv 5.0". (Found by GUT's Float/Int comparison
+## warning during the iteration-1 test pass — see PROGRESS.md.)
 func slot_summary(slot: int) -> Dictionary:
 	if not slot_exists(slot):
 		return {}
 	var blob: Dictionary = _read_slot(slot)
 	if blob.is_empty():
 		return {}
-	var lead: Dictionary = blob.get("party", [{}])[0] if not blob.get("party", []).is_empty() else {}
+	var party_list: Array = blob.get("party", [])
+	var lead: Dictionary = party_list[0] if not party_list.is_empty() else {}
 	return {
 		"slot": slot,
-		"zone": blob.get("zone", ""),
-		"gold": blob.get("gold", 0),
-		"level": lead.get("level", 1),
+		"zone": String(blob.get("zone", "")),
+		"gold": int(blob.get("gold", 0)),
+		"level": int(lead.get("level", 1)),
 	}
 
 

@@ -75,3 +75,86 @@ changed.
 - [x] No UI colours/fonts invented — no UI touched
 - [x] Only ONE system changed (the test suite)
 - [x] Committed
+
+---
+
+## Iteration 2 — Task 2 verified done, Task 3: save/load hardening
+
+**System changed:** save/load (`GameState.gd` + `SaveManager.gd`). Nothing else.
+
+### Task 2 status: already complete, verified not re-done
+
+Checked for any hardcoded enemy/move/item **stat** in `scripts/`: none exist.
+`&"hero"`, `&"potion"`, `&"ember"` etc. appearing in code are `StringName` ids
+looked up through `ContentDB` — references, not values. All actual stats
+(hp, attack, power, price, growth curves) live in `data/**/*.tres`, loaded by
+`ContentDB._load_dir()`. This was done in the original vertical slice
+(`e7177a2`), before this hardening loop began. No code changed for Task 2 this
+iteration; moving straight to Task 3 rather than inventing filler work.
+
+The engine-level tuning constants that remain in code (`Damage.VARIANCE_MIN`,
+`Combat.BASE_FLEE_CHANCE`, `GameState.XP_CURVE_BASE`, etc.) are formula shape,
+not enemy/move/item stats — Task 2 doesn't ask for those to move to data, and
+moving them would blur "formula" and "content" in a way the spec doesn't.
+Left alone.
+
+### Task 3: two real defects fixed, one edge case documented as a limitation
+
+**Fix 1 — `SaveManager.slot_summary()` returned floats.** Flagged as a known
+defect in iteration 1 (GUT's own Float/Int comparison warning caught it).
+`_read_slot()` goes through `JSON.parse_string()`, which returns every number
+as a float — so a save-select screen would have rendered `Gold: 931.0` /
+`Lv 5.0`. Now explicitly `int()`-cast. Regression test:
+`test_slot_summary_returns_ints_not_floats`.
+
+**Fix 2 — loading a save re-fired every level-up signal.** `from_dict()`
+restores a saved level by replaying `_level_up()` from 1 up to the saved
+level (deliberately — stats are never trusted from the blob, only the level
+number is, and growth is replayed from the current curve). But `_level_up()`
+unconditionally emitted `party_member_leveled`, so loading a level-12 save
+fired 11 level-up signals back to back — any UI listening for a "LEVEL UP!"
+toast or jingle would fire it 11 times the instant a save finished loading.
+Added an `announce: bool = true` parameter; `from_dict()`'s replay passes
+`false`, `award_xp()`'s real level-ups keep the default. Regression tests:
+`test_loading_a_save_does_not_fire_level_up_signals`,
+`test_real_level_ups_still_announce` (guards against over-silencing).
+
+### Edge cases added (`test/unit/test_save_hardening.gd`, 12 tests)
+
+- Empty inventory round-trips and doesn't break `slot_summary()`.
+- `slot_summary()` on a missing slot, and on a save with a hand-corrupted
+  empty `party` array — both return cleanly instead of crashing.
+- A party entry naming content that no longer exists (a renamed/deleted
+  `.tres`) is dropped with a warning, not fatal to the rest of the load.
+- **Mid-battle state is not touched by save/load**, checked from both
+  directions: `to_dict()` reflects the last *committed* vitals, not whatever
+  a live `Battler` currently holds mid-fight (only `store_vitals()` commits
+  it — SPEC's "never run battle inside the overworld" boundary); and
+  `from_dict()` never reaches into `BattleManager`, so loading mid-fight
+  can't corrupt an active battle.
+
+### KNOWN LIMITATION — logged, not fixed
+
+**Two party members duplicated from the same content template collide in
+`vitals`/`experience`.** Both dictionaries are keyed by `BattlerData.id`,
+which is the *content template's* id (e.g. `&"hero"`), not a per-party-slot
+instance id. Add two members built from the same `.tres` — including the
+starting hero plus any duplicate — and they share one vitals entry; whichever
+is added last silently overwrites the earlier ones' HP/SP. Confirmed by
+`test_known_limitation_duplicate_content_ids_collide_in_vitals`.
+
+Not fixed this iteration: a real fix means keying saves by party-slot index
+(or a generated per-instance id) instead of content id, which is a
+**save-schema change** — a different, larger decision than a hardening pass,
+and the game currently has exactly one party-member template so it never
+manifests in play. Flagging for whoever adds a second recruitable character.
+
+### Self-check
+
+- [x] Project launches without errors
+- [x] All GUT tests green (104/104, 774 asserts)
+- [x] No model/texture/shader/animation touched
+- [x] No UI touched
+- [x] Only ONE system changed (save/load: `game_state.gd` + `save_manager.gd`
+      + their tests)
+- [x] Committed
