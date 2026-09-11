@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EncounterTable" format=3]
+
+[ext_resource type="Resource" path="res://data/enemies/warden.tres" id="1_nufjc"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="2_4qayk"]
+[ext_resource type="Resource" path="res://data/enemies/frostbit.tres" id="3_qbtv6"]
+[ext_resource type="Resource" path="res://data/enemies/emberling.tres" id="4_foq1b"]
+[ext_resource type="Resource" path="res://data/enemies/gustling.tres" id="5_6y24l"]
+[ext_resource type="Script" path="res://scripts/data/encounter_table.gd" id="6_2src1"]
+
+[resource]
+script = ExtResource("6_2src1")
+zone_id = &"zone_01"
+encounters = Array[ExtResource("2_4qayk")]([ExtResource("3_qbtv6"), ExtResource("4_foq1b"), ExtResource("5_6y24l")])
+weights = Array[int]([4, 3, 3])
+steps_per_encounter = 24
+boss = ExtResource("1_nufjc")

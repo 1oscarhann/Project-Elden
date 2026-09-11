@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="PartyMemberData" format=3]
+
+[ext_resource type="Resource" path="res://data/moves/frost.tres" id="1_rhgdy"]
+[ext_resource type="Resource" path="res://data/moves/radiance.tres" id="2_1c77f"]
+[ext_resource type="Resource" path="res://data/moves/gale.tres" id="3_ys7yd"]
+[ext_resource type="Resource" path="res://data/moves/mend.tres" id="4_kaalm"]
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="5_sroro"]
+[ext_resource type="Resource" path="res://data/moves/cleave.tres" id="6_1pdxc"]
+[ext_resource type="Resource" path="res://data/moves/ember.tres" id="7_tv6wb"]
+[ext_resource type="Script" path="res://scripts/data/party_member_data.gd" id="8_1tbve"]
+
+[resource]
+script = ExtResource("8_1tbve")
+hp_growth = 7
+learnset = {
+2: ExtResource("1_rhgdy"),
+3: ExtResource("2_1c77f"),
+4: ExtResource("3_ys7yd"),
+5: ExtResource("4_kaalm")
+}
+id = &"hero"
+display_name = "Wanderer"
+max_hp = 46
+max_sp = 20
+attack = 14
+defense = 11
+speed = 12
+moves = Array[ExtResource("5_sroro")]([ExtResource("6_1pdxc"), ExtResource("7_tv6wb")])

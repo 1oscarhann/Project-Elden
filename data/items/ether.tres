@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1_x64tw"]
+
+[resource]
+script = ExtResource("1_x64tw")
+id = &"ether"
+display_name = "Ether"
+description = "Restores 18 SP."
+effect = 1
+amount = 18
+price = 120

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_77u0o"]
+
+[resource]
+script = ExtResource("1_77u0o")
+id = &"buffet"
+display_name = "Buffet"
+description = "A battering gust."
+type = &"wind"
+power = 22
+sp_cost = 4

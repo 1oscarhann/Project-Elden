@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_ar100"]
+
+[resource]
+script = ExtResource("1_ar100")
+id = &"cinder"
+display_name = "Cinder"
+description = "A spit of flame."
+type = &"fire"
+power = 22
+sp_cost = 4

@@ -4,6 +4,9 @@ Notes on `SPEC.md`. Everything here is either a correctness problem, a
 hidden cost, or a design gap. The pillars and the build order are sound
 and are not challenged.
 
+**Status:** every point below has been actioned in the implementation.
+`SPEC.md` §12 records what was decided.
+
 ---
 
 ## Blocking-ish: things that are probably wrong
@@ -110,14 +113,69 @@ retrofitting it into a finished state machine is miserable.
   battle inside the overworld" is right, but the spec should state that
   player position / zone state is written to `GameState` before the swap
   and restored after, or you will lose it the first time you unload.
-- **"Godot 4.7 (mainline)" is a risk, not a choice.** Building a months-long
-  project on an unreleased branch means engine regressions become your
-  bugs. Pin to the latest stable release and upgrade deliberately. (Also
-  note the spec pins the WebGPU fork to 4.6.2 — so the fork bonus path and
-  the main path are already on different engine versions.)
+- **Engine version — correction.** An earlier draft of this review read
+  "4.7 (mainline)" as an unreleased dev branch and called it a risk. That
+  was wrong: **Godot 4.7 stable is released**, and the project is built and
+  tested against it. The remaining point stands only in the weaker form:
+  pin to a stable tag in `project.godot` and upgrade deliberately, rather
+  than drifting onto dev builds. (Worth noting the spec pins the WebGPU
+  fork to 4.6.2, so the bonus export path and the main path are already on
+  different engine versions.)
 - **Web means phones.** A browser link gets opened on a phone, and a
   `CharacterBody3D` + `SpringArm3D` with keyboard input is unplayable
   there. Either add touch controls, or put "desktop browser" on the page
   and accept the bounce rate.
 - **Client-authoritative saves are forgeable.** Fine for single-player —
   just don't add a leaderboard later and expect it to mean anything.
+
+
+---
+
+## Appendix: traps found while building the slice
+
+Three of these cost real time and all three are silent, so they're written
+down rather than just fixed.
+
+### `--script` MainLoops don't have autoloads
+
+Running a tool or a test with `godot --headless --script foo.gd` does **not**
+register the autoload singletons as GDScript globals. Any script that
+references `GameState` or `BattleManager` then fails to compile, and
+`load()` hands back `null` without raising.
+
+That bit twice:
+
+1. The scene generator wrote `World.tscn` and `Battle.tscn` with the root
+   script, the boss gate script and its exported `table` **silently
+   missing** — the scenes packed fine, they were just hollow.
+2. The test suite preloaded the autoload scripts to read an enum, which
+   compiled them too early, degraded all four singletons to bare `Node`,
+   and still reported **48 passed, 0 failed**.
+
+Fixes: tools and tests run as *scenes* (`res://tests/TestRunner.tscn`), never
+`--script`; shared enums and constants live in plain `class_name` scripts
+(`Combat`, `SaveFormat`) instead of on the singletons; the generator calls
+`_require_script()` which aborts rather than writing a scene with a hole in
+it; and the suite's first test asserts all four autoloads kept their scripts.
+
+**A green suite that tested nothing is worse than a red one.** If a test run
+gets faster or quieter after a refactor, check it still fails when you break
+something on purpose.
+
+### GDScript lambdas capture by value
+
+```gdscript
+var outcome := []
+sig.connect(func(x): outcome = [x])   # never escapes the closure
+sig.connect(func(x): outcome.append(x))  # works — arrays are references
+```
+
+The first form made a battle test hang forever waiting on an end state that
+had already been reached.
+
+### `_get` is taken
+
+A private HTTP helper named `_get(path)` collides with `Object._get(StringName)`
+and fails the whole script with "the function signature doesn't match the
+parent". `SaveManager._get` is now `_http_get`. Same trap waits on `_set`,
+`_init` and `_notification`.

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_sfvv5"]
+
+[resource]
+script = ExtResource("1_sfvv5")
+id = &"mend"
+display_name = "Mend"
+description = "Closes your wounds."
+type = &"light"
+effect = 1
+target = 2
+power = 34
+sp_cost = 6

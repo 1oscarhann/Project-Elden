@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_3yxrq"]
+
+[resource]
+script = ExtResource("1_3yxrq")
+id = &"cleave"
+display_name = "Cleave"
+description = "A heavy two-handed swing."
+power = 30
+sp_cost = 4

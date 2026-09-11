@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_swbbg"]
+
+[resource]
+script = ExtResource("1_swbbg")
+id = &"ember"
+display_name = "Ember"
+description = "A gout of flame. Melts ice."
+type = &"fire"
+power = 28
+sp_cost = 5

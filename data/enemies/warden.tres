@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_rfka8"]
+[ext_resource type="Resource" path="res://data/moves/ruin.tres" id="2_j7dwi"]
+[ext_resource type="Resource" path="res://data/moves/crush.tres" id="3_1s5cc"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="4_2h4km"]
+
+[resource]
+script = ExtResource("4_2h4km")
+xp_reward = 140
+gold_reward = 200
+is_boss = true
+placeholder_color = Color(0.35, 0.2, 0.5, 1)
+aggression = 0.85
+id = &"warden"
+display_name = "Warden of the First Gate"
+level = 5
+max_hp = 150
+max_sp = 40
+attack = 19
+defense = 15
+speed = 11
+defend_type = &"dark"
+moves = Array[ExtResource("1_rfka8")]([ExtResource("2_j7dwi"), ExtResource("3_1s5cc")])

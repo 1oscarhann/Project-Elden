@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_67y7x"]
+[ext_resource type="Resource" path="res://data/moves/chill.tres" id="2_oveih"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="3_28ci6"]
+
+[resource]
+script = ExtResource("3_28ci6")
+xp_reward = 14
+gold_reward = 12
+placeholder_color = Color(0.45, 0.75, 0.95, 1)
+id = &"frostbit"
+display_name = "Frostbit"
+max_hp = 34
+max_sp = 12
+attack = 11
+defense = 9
+speed = 8
+defend_type = &"ice"
+moves = Array[ExtResource("1_67y7x")]([ExtResource("2_oveih")])

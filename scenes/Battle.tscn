@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/battle_scene.gd" id="1_bdmed"]
+
+[node name="Battle" type="Node3D" unique_id=953377613]
+script = ExtResource("1_bdmed")

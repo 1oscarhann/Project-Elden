@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_uspuv"]
+[ext_resource type="Resource" path="res://data/moves/cinder.tres" id="2_7x1m2"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="3_t0faa"]
+
+[resource]
+script = ExtResource("3_t0faa")
+xp_reward = 16
+gold_reward = 14
+placeholder_color = Color(0.95, 0.45, 0.25, 1)
+id = &"emberling"
+display_name = "Emberling"
+level = 2
+max_sp = 12
+attack = 13
+defense = 8
+speed = 13
+defend_type = &"fire"
+moves = Array[ExtResource("1_uspuv")]([ExtResource("2_7x1m2")])

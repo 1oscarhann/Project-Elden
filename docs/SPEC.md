@@ -3,7 +3,7 @@
 **Working title:** TBD
 **Author:** Oscar (3terrabytes)
 **Date:** 11 Sept 2026
-**Status:** Pre-production
+**Status:** Vertical slice implemented (build order steps 1–7)
 
 ---
 
@@ -39,7 +39,7 @@ Single-player only. No multiplayer (keeps backend and netcode trivial).
 
 | Layer | Choice | Notes |
 |-------|--------|-------|
-| **Engine** | Godot 4.7 (mainline) | Already known (built Rift). Native HTML5 export. |
+| **Engine** | Godot 4.7 **stable** | Pinned, not tracking a dev branch — engine regressions become your bugs. Already known (built Rift). Native HTML5 export. |
 | **Language** | GDScript | Cleaner WASM output than C# for web. |
 | **Dev renderer** | Forward+ (desktop) | Full-fat while developing. |
 | **Web renderer** | Compatibility / WebGL 2 | The stable shippable target. |
@@ -87,6 +87,8 @@ All game logic runs client-side. Neon is a glorified save file.
 
 - **Turn structure:** state machine — `PlayerTurn → EnemyTurn → CheckWin/Loss → loop`. Signal-driven, not `_process` polling.
 - **Type chart:** the core hook. A 2D dict of attack-type vs defend-type multipliers (weak / neutral / resist / immune). Build this early — it's the whole identity of the combat.
+  - Wheel: fire > ice > wind > fire. Shock > wind. Light ↔ dark are mutually weak and null to themselves.
+- **One More (DECIDED).** A weakness hit or a crit grants the attacker **one extra action**, capped at once per actor per round. This is the Persona hook and the reason the type chart is worth *learning* rather than memorising once — scouting a weakness converts into tempo, not just a bigger number. Without it this design is Pokémon with a Persona coat of paint. Lives behind `Combat.ONE_MORE_ENABLED`.
 - **Damage formula:** lives in **one** function. Never scatter it. Roughly `base × typeMultiplier × (atk/def) × variance`.
 - **Actions:** Attack / Skill / Item / Defend / Flee (minimum viable set).
 - **Progression:** XP → level → stat growth + new moves at thresholds.
@@ -99,7 +101,7 @@ All game logic runs client-side. Neon is a glorified save file.
 accounts
   id            uuid  pk
   username      text  unique
-  password_hash text
+  password_hash text          -- argon2id
   created_at    timestamptz
 
 save_slots
@@ -108,9 +110,15 @@ save_slots
   slot_index int
   data       jsonb   -- entire GameState serialised
   updated_at timestamptz
+  UNIQUE (account_id, slot_index)     -- without this, /load is a coin flip
+  INDEX  (account_id)                 -- hit on every load
 ```
 
 Don't over-normalise. One JSON blob per save is fine and fast.
+
+`/save` is an **upsert** on `(account_id, slot_index)`, not an insert. Blobs are
+capped at 256 KB on both ends, and ownership is enforced by putting
+`account_id` in the `WHERE` clause — the client never names a row id.
 
 ### API endpoints (that's all you need)
 - `POST /register`
@@ -125,23 +133,27 @@ Don't over-normalise. One JSON blob per save is fine and fast.
 - **Download budget: aim < 30 MB.** Nobody waits for a browser game to load.
 - Textures modest resolution + compressed.
 - Audio as `.ogg`.
-- Bake lighting (no real-time GI on web).
+- Bake lighting (no real-time GI on web). Note this **costs** download size — lightmaps are textures. Budget them as an asset cost, not a saving.
 - Test the actual web build on Render **early**, not just desktop. Web threading behaves differently and will surprise you.
-- Free wins from 4.7: wasm64 + WASM SIMD (on by default) give headroom for zero effort.
+- **wasm32 + SIMD.** SIMD is genuinely free and on by default. wasm64 is *not* a free win — 64-bit pointers inflate the heap and the binary for a >4 GB address space a 30 MB game will never use, and browser coverage is narrower. It points the wrong way against the download budget.
 
 ---
 
 ## 9. Build order (DO NOT reorder)
 
-1. Overworld movement + 3rd-person camera
-2. Encounter trigger → swap to battle scene
-3. Combat loop with **one hardcoded enemy**
-4. Convert combat to data-driven (json/tres enemies + moves)
-5. Local save/load (JSON to disk)
-6. Type chart + 3 enemies + 1 boss → **vertical slice done**
-7. Wire up Neon backend (accounts + cloud saves)
-8. Web export (WebGL 2; try WebGPU fork as bonus)
-9. Build out zones 2–5 + quests + progression
+1. Overworld movement + 3rd-person camera ✅
+2. Encounter trigger → swap to battle scene ✅
+3. Combat loop with **one hardcoded enemy** ✅
+4. Convert combat to data-driven (`.tres` enemies + moves) ✅
+5. Local save/load (JSON to disk) ✅
+6. Type chart + 3 enemies + 1 boss → **vertical slice done** ✅
+7. Wire up Neon backend (accounts + cloud saves) ✅ *(code written; not deployed)*
+8. **Combat UI + audio pass.** Both were missing from the original list. The
+   combat UI is not a small job and the overworld→battle audio seam is the most
+   audible moment in the game.
+9. Web export (WebGL 2; try WebGPU fork as bonus)
+10. Dialogue system + `dialogue/*.json` (also missing from the original list)
+11. Build out zones 2–5 + quests + progression
 
 > Backend and web export are steps 7–8, not step 1. Nail the fun loop on desktop first.
 
@@ -165,12 +177,32 @@ Don't over-normalise. One JSON blob per save is fine and fast.
 
 ---
 
-## 12. Open questions
+## 12. Decisions taken during review
 
-Raised during review; not yet decided by the author. See `docs/REVIEW.md` for the reasoning.
+Reasoning in `docs/REVIEW.md`.
 
-1. Engine version — pin to the latest **stable** Godot, or accept mainline churn?
-2. `.tres` or `.json` for content data? The spec currently says "either" in two places. Pick one.
-3. Does the combat get a **One More / press-turn** mechanic, or is weakness-exploitation purely a damage multiplier?
-4. `wasm64` — verify it's actually a win before claiming it as one.
-5. Is the web build desktop-only, or does it need touch input?
+| # | Question | Decision |
+|---|----------|----------|
+| 1 | Engine version | **Godot 4.7 stable**, pinned. Upgrade deliberately. |
+| 2 | `.tres` or `.json`? | **`.tres`** for stats — typed exports, editor UI, load-time validation. `.json` for dialogue only, where diffs matter. |
+| 3 | One More / press-turn? | **Yes.** See §6. Highest-leverage call in the combat design. |
+| 4 | `wasm64` | **Dropped.** See §8. |
+| 5 | Touch input | **Deferred, not dismissed.** Ships desktop-first and says so. Revisit at step 9 — a browser link *will* get opened on a phone. |
+| 6 | Accounts | **Kept**, but hardened (argon2id, JWT, rate limiting, blob cap). The anonymous-save-id alternative is still the cheaper answer if logins stop earning their keep. |
+
+---
+
+## 13. What exists now
+
+Verified against Godot 4.7 stable; 76 assertions pass headless (`./run_tests.sh`).
+
+| Area | State |
+|------|-------|
+| Overworld | `CharacterBody3D` + `SpringArm3D` chase camera, greybox zone, camera-relative movement |
+| Encounters | Distance-based random encounters + a one-shot boss gate |
+| Combat | Full turn state machine, One More, type chart, single damage function, 5 actions |
+| Content | 12 moves, 4 enemies (3 trash + 1 boss), 2 items, 1 party member — all `.tres` |
+| Progression | XP curve, stat growth, learnset (the hero's light skill is the boss key) |
+| Save | Local JSON to disk + cloud sync, version-checked, 256 KB cap |
+| Backend | FastAPI + Neon schema, written and compiling, **not deployed** |
+| Art | Placeholder capsules. Deliberately — art is what eats the 30 MB budget. |

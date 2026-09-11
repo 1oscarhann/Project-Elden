@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_4dvbv"]
+[ext_resource type="Resource" path="res://data/moves/buffet.tres" id="2_tuccn"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="3_wqd6m"]
+
+[resource]
+script = ExtResource("3_wqd6m")
+xp_reward = 18
+gold_reward = 16
+placeholder_color = Color(0.6, 0.9, 0.6, 1)
+id = &"gustling"
+display_name = "Gustling"
+level = 2
+max_hp = 28
+max_sp = 14
+attack = 12
+speed = 16
+defend_type = &"wind"
+moves = Array[ExtResource("1_4dvbv")]([ExtResource("2_tuccn")])

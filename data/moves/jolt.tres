@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_8oxu3"]
+
+[resource]
+script = ExtResource("1_8oxu3")
+id = &"jolt"
+display_name = "Jolt"
+description = "A sharp arc. Shreds wind."
+type = &"shock"
+power = 28
+sp_cost = 5

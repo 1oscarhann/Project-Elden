@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1_0jtar"]
+
+[resource]
+script = ExtResource("1_0jtar")
+id = &"potion"
+display_name = "Potion"
+description = "Restores 40 HP."
+amount = 40
+price = 60

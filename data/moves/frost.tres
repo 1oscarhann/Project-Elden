@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_data.gd" id="1_23mdj"]
+
+[resource]
+script = ExtResource("1_23mdj")
+id = &"frost"
+display_name = "Frost"
+description = "Biting cold. Grounds the wind."
+type = &"ice"
+power = 28
+sp_cost = 5
