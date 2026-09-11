@@ -1,0 +1,22 @@
+; Engine configuration file.
+; Pin this to the Godot version you actually ship on — see docs/REVIEW.md.
+
+config_version=5
+
+[application]
+
+config/name="Project Elden"
+run/main_scene="res://scenes/World.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+
+[autoload]
+
+GameState="*res://scripts/autoload/game_state.gd"
+BattleManager="*res://scripts/autoload/battle_manager.gd"
+SaveManager="*res://scripts/autoload/save_manager.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.web="gl_compatibility"

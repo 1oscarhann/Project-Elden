@@ -1,0 +1,25 @@
+# Godot 4
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Builds
+builds/
+build/
+*.wasm
+*.pck
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
