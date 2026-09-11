@@ -35,8 +35,10 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path . --import
 
-      - name: Run tests
-        run: ~/godot/godot --headless --path . res://tests/TestRunner.tscn
+      - name: Run GUT suite
+        run: |
+          ~/godot/godot --headless --path . \
+            -s addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit
 
   backend:
     runs-on: ubuntu-latest

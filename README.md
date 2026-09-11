@@ -30,10 +30,15 @@ so go and level up first.
 GODOT=/path/to/godot ./run_tests.sh
 ```
 
-76 assertions, headless, exits non-zero on failure. Covers the type chart, the
-damage formula, One More, progression, save round-trips (including through
-disk), content loading, and both scenes actually booting. CI runs the same
-thing plus a backend import check.
+**93 tests / 751 assertions**, headless, exits non-zero on failure. Run with
+[GUT 9.7.1](addons/gut) (vendored in `addons/gut/`, suite in `test/unit/`).
+Covers the type chart, the damage formula (multipliers, variance bounds, the
+minimum-1 floor), One More, progression and stat growth, save round-trips
+field-by-field including through disk, content loading, the turn machine, and
+both scenes actually booting. CI runs the same thing plus a backend import
+check.
+
+Progress on the hardening pass is logged in [`PROGRESS.md`](PROGRESS.md).
 
 ## Docs
 
@@ -54,7 +59,8 @@ scripts/world/          player controller, encounter zone, boss gate
 scripts/ui/             combat UI
 scripts/tools/          content and scene generators (run as scenes, not --script)
 data/                   enemies, moves, items, party, encounters — all .tres
-tests/                  headless suite
+test/unit/              GUT suite
+addons/gut/             GUT 9.7.1 (vendored; exclude from the web export)
 backend/                FastAPI + Neon save API
 ```
 
