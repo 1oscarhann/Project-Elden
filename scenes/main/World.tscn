@@ -1,6 +1,7 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
+[ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
 [ext_resource type="Script" path="res://scripts/world/island_generator.gd" id="script_gen"]
 [ext_resource type="TileSet" path="res://assets/tiles/island_terrain.tres" id="tileset"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
@@ -15,6 +16,10 @@
 [ext_resource type="Texture2D" uid="uid://b0rlerx7d6wf6" path="res://assets/trees/Tree1.png" id="tree_8"]
 [ext_resource type="Texture2D" uid="uid://x3816ls6ydl1" path="res://assets/trees/Tree2.png" id="tree_9"]
 [ext_resource type="Texture2D" uid="uid://crf0hmaq7n152" path="res://assets/trees/Tree3.png" id="tree_10"]
+
+[sub_resource type="Gradient" id="sky_gradient"]
+offsets = PackedFloat32Array(0, 0.2, 0.27, 0.34, 0.7, 0.77, 0.86, 1)
+colors = PackedColorArray(0.4, 0.46, 0.7, 1, 0.42, 0.48, 0.72, 1, 0.92, 0.76, 0.7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.68, 0.42, 1, 0.42, 0.48, 0.72, 1, 0.4, 0.46, 0.7, 1)
 
 [sub_resource type="Resource" id="generator"]
 script = ExtResource("script_gen")
@@ -44,3 +49,7 @@ tile_set = ExtResource("tileset")
 y_sort_enabled = true
 
 [node name="Player" parent="Props" instance=ExtResource("player")]
+
+[node name="SkyTint" type="CanvasModulate" parent="."]
+script = ExtResource("script_sky")
+gradient = SubResource("sky_gradient")

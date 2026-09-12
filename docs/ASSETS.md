@@ -62,7 +62,12 @@ Static 128×128 PNGs with shadows.
 
 ## 5. ~~Objects / interiors / fire — dungeon pack `169442`~~ — **DROPPED (Phase 2)**
 
-> **This pack is no longer used.** Its art is dark dungeon stone and clashes badly with a sunny
+> **Mostly unused.** Owner's call (Phase 3): the **fire animation**, **doors** and **chests** may
+> be used. **Nothing else** — its wall/floor and water tiles stay out, so Phase 8 still needs
+> interior tile art from somewhere else.
+>
+> Original note:
+> **This pack is otherwise not used.** Its art is dark dungeon stone and clashes badly with a sunny
 > cozy island. The zip is still in `raw_assets/` but nothing imports from it, and it is not in
 > `CREDITS.md`.
 >

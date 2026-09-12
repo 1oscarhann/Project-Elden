@@ -1,9 +1,21 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="script_player"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="script_camera"]
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="frames_player"]
 [ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
+
+[sub_resource type="Gradient" id="glow_falloff"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="glow_texture"]
+gradient = SubResource("glow_falloff")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
 
 [sub_resource type="RectangleShape2D" id="shape_feet"]
 size = Vector2(16, 8)
@@ -32,3 +44,10 @@ script = ExtResource("script_camera")
 zoom = Vector2(2, 2)
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
+
+[node name="Glow" type="PointLight2D" parent="."]
+position = Vector2(0, -10)
+color = Color(1, 0.91, 0.74, 1)
+energy = 0.5
+texture = SubResource("glow_texture")
+texture_scale = 0.55

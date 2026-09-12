@@ -53,7 +53,9 @@ func _apply_movement(input: Vector2, running: bool, delta: float) -> void:
 	if input == Vector2.ZERO:
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
 		return
-	var speed := run_speed if running else walk_speed
+	# Cold is a soft penalty: GameState.speed_factor() eases toward a floor, it
+	# never reaches zero.
+	var speed: float = (run_speed if running else walk_speed) * GameState.speed_factor()
 	velocity = velocity.move_toward(input * speed, acceleration * delta)
 
 

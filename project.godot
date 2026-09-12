@@ -11,6 +11,12 @@ config/description="A cozy 2D angled-top-down pixel-art island survival game. No
 run/main_scene="res://scenes/main/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+; DayNight must come first: GameState reads its phase in _ready.
+DayNight="*res://scripts/globals/day_night.gd"
+GameState="*res://scripts/globals/game_state.gd"
+
 [display]
 
 ; 640x360 integer-scales cleanly to 720p (2x), 1080p (3x) and 4K (6x).
