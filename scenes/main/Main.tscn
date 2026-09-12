@@ -1,43 +1,10 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="scene_player"]
+[ext_resource type="PackedScene" path="res://scenes/main/World.tscn" id="world"]
 
 [node name="Main" type="Node2D"]
 
-[node name="Ground" type="Polygon2D" parent="."]
-color = Color(0.42, 0.56, 0.35, 1)
-polygon = PackedVector2Array(-2000, -2000, 2000, -2000, 2000, 2000, -2000, 2000)
-
-[node name="World" type="Node2D" parent="."]
-y_sort_enabled = true
-
-[node name="Post1" type="Polygon2D" parent="World"]
-position = Vector2(-80, -34)
-color = Color(0.35, 0.27, 0.22, 1)
-polygon = PackedVector2Array(-7, -40, 7, -40, 7, 0, -7, 0)
-
-[node name="Post2" type="Polygon2D" parent="World"]
-position = Vector2(-16, -8)
-color = Color(0.35, 0.27, 0.22, 1)
-polygon = PackedVector2Array(-7, -40, 7, -40, 7, 0, -7, 0)
-
-[node name="Post3" type="Polygon2D" parent="World"]
-position = Vector2(46, -30)
-color = Color(0.35, 0.27, 0.22, 1)
-polygon = PackedVector2Array(-7, -40, 7, -40, 7, 0, -7, 0)
-
-[node name="Post4" type="Polygon2D" parent="World"]
-position = Vector2(88, 26)
-color = Color(0.35, 0.27, 0.22, 1)
-polygon = PackedVector2Array(-7, -40, 7, -40, 7, 0, -7, 0)
-
-[node name="Post5" type="Polygon2D" parent="World"]
-position = Vector2(-56, 44)
-color = Color(0.35, 0.27, 0.22, 1)
-polygon = PackedVector2Array(-7, -40, 7, -40, 7, 0, -7, 0)
-
-[node name="Player" parent="World" instance=ExtResource("scene_player")]
-position = Vector2(0, 16)
+[node name="World" parent="." instance=ExtResource("world")]
 
 [node name="UI" type="CanvasLayer" parent="."]
 

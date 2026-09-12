@@ -8,7 +8,6 @@ Art assets by CraftPix.net (free licence — attribution required):
 - Top-Down Hunt Animals Pixel Sprite Pack (pack 789196)
 - Top-Down Trees Pixel Art (pack 385863)
 - Top-Down Bushes Pixel Art (pack 141354)
-- 2D Top-Down Pixel Dungeon Asset Pack (pack 169442)
 - Item/UI icon sheets (CraftPix)
 
 https://craftpix.net

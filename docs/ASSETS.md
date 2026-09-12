@@ -42,7 +42,7 @@ Suggested for a cozy island: **Hare** + **Deer** (skittish, flee) first; Boar la
 
 ## 3. Trees — pack `385863`
 
-Static 128×128 PNGs, each tree also has a matching shadow PNG in `Trees_shadow/`.
+**Verified in Phase 2: sizes are NOT uniform.** Most are 128×128 but several are 64×64 (`Palm_tree1_2`, `Palm_tree2_2`, `Tree2`, `Tree3`) and the broken ones are 32×32/48×48. Do not assume a size — measure the alpha bounds. Each tree also has a matching shadow PNG in `Trees_shadow/`.
 
 - Island-appropriate: **Palm_tree1/2**, **Fruit_tree1–3**, **Tree1–3**, **Flower_tree1–3**, **Moss_tree1–3**
 - Free "harvested" states: **Broken_tree1–7**, **Burned_tree1–3**
@@ -60,7 +60,18 @@ Static 128×128 PNGs with shadows.
 
 → copy to `res://assets/bushes/`
 
-## 5. Objects / interiors / fire — dungeon pack `169442`
+## 5. ~~Objects / interiors / fire — dungeon pack `169442`~~ — **DROPPED (Phase 2)**
+
+> **This pack is no longer used.** Its art is dark dungeon stone and clashes badly with a sunny
+> cozy island. The zip is still in `raw_assets/` but nothing imports from it, and it is not in
+> `CREDITS.md`.
+>
+> **Open gap:** this pack was the planned source for the **campfire flame** (Phase 4), **doors and
+> chests** (Phase 8) and **interior wall/floor tiles** (Phase 8). Those phases need replacement art.
+>
+> Original notes kept below for reference only.
+
+### (unused) original notes
 
 The utility grab-bag.
 
@@ -110,7 +121,6 @@ Art assets by CraftPix.net (free licence — attribution required):
 - Top-Down Hunt Animals Pixel Sprite Pack (pack 789196)
 - Top-Down Trees Pixel Art (pack 385863)
 - Top-Down Bushes Pixel Art (pack 141354)
-- 2D Top-Down Pixel Dungeon Asset Pack (pack 169442)
 - Item/UI icon sheets (CraftPix)
 https://craftpix.net
 ```
