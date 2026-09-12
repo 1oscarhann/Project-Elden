@@ -158,3 +158,73 @@ manifests in play. Flagging for whoever adds a second recruitable character.
 - [x] Only ONE system changed (save/load: `game_state.gd` + `save_manager.gd`
       + their tests)
 - [x] Committed
+
+---
+
+## Iteration 3 — Task 4: code cleanup
+
+**System changed:** code cleanup (naming, docstrings, splitting the one
+over-length script). No behaviour changed anywhere in this iteration — every
+change is either a pure extraction (same logic, new location) or a comment.
+
+### Naming conventions: audited, already clean
+
+Scanned every non-addon script for camelCase identifiers, PascalCase
+vars/funcs, and missing file-level doc comments. **Zero violations found** —
+the codebase already follows GDScript's snake_case/PascalCase/SCREAMING_SNAKE
+conventions consistently. No changes made.
+
+### Split `battle_manager.gd`: 367 → 301 lines
+
+It was the only script over the ~300 line guideline. Pulled three
+single-responsibility, independently-testable pieces out of it — pure
+functions with no dependency on BattleManager's instance state:
+
+| New file | Extracted from | What it does |
+|---|---|---|
+| `scripts/combat/enemy_ai.gd` | `_choose_enemy_action` | Picks an enemy's move: attack vs. best-scoring skill against the target's type, gated by aggression |
+| `scripts/combat/battle_log.gd` | `_describe`, the item-effect text in `_resolve_item` | Turns a resolved action into the line of text the player reads |
+| `scripts/combat/battler_group.gd` | `_alive`, `_random_living_foe`, `_has_boss` | Pure queries over a side's Battler array |
+| `Combat.flee_chance()` (added to existing `combat.gd`) | the inline math in `_try_flee` | The escape-odds formula, now a named, testable function instead of inline arithmetic |
+
+`battle_manager.gd` now only owns the turn state machine and signal wiring;
+it calls into these four instead of doing the work inline. Every constant
+used in the extracted math (`0.02` speed weight, `0.05`/`0.95` clamp bounds)
+kept its exact value — confirmed byte-for-byte via `test_battle_helpers.gd`'s
+bound checks and the untouched `test_battle_flow.gd` suite still passing
+unchanged.
+
+Added `test/unit/test_battle_helpers.gd` (17 tests) covering the four
+extracted pieces directly — the whole point of pulling them out was to make
+them testable without spinning up a battle, so this cashes that in rather
+than just asserting via existing higher-level battle tests.
+
+### Docstrings: 42 missing, now 0
+
+Scanned every public (non-underscore, non-lifecycle) function across
+`scripts/` for a preceding `##` doc comment. Found 42 missing, spread across
+`audio_manager.gd`, `battle_manager.gd`, `game_state.gd`, `save_manager.gd`,
+`battler.gd`, `encounter_table.gd`, `move_data.gd`, `battle_ui.gd`,
+`encounter_zone.gd`. Added one to two lines each, explaining what the
+function does and, where it wasn't obvious from the name, why (e.g.
+`store_vitals()` now says it's the *only* path that lets a battle's outcome
+reach a save). Re-ran the scan after: zero missing.
+
+### Verification
+
+- 121 tests, 835 asserts, all green (104 existing + 17 new for the split).
+- Grepped for leftover references to the four removed private helpers
+  (`_describe`, `_alive`, `_random_living_foe`, `_has_boss`) — none found
+  outside the new modules and their legitimate `Battler.is_alive()` calls.
+- Project launches clean, headless.
+
+### Self-check
+
+- [x] Project launches without errors
+- [x] All GUT tests green (121/121, 835 asserts)
+- [x] No model/texture/shader/animation touched
+- [x] No UI touched (`battle_ui.gd` only gained a docstring, no structural
+      or visual change)
+- [x] Only ONE system changed (code cleanup — naming/docstrings/split, pure
+      refactor, zero behaviour change)
+- [x] Committed

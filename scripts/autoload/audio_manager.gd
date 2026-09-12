@@ -28,6 +28,9 @@ func _ready() -> void:
 	add_child(_sfx)
 
 
+## Cross-fades into `stream_path`, swapping which of the two players is
+## "active" so the old track fades out while the new one fades in. A no-op
+## if the requested track is already playing.
 func play_music(stream_path: String, fade_seconds: float = FADE_SECONDS) -> void:
 	if stream_path == _current_track:
 		return
@@ -52,6 +55,7 @@ func play_music(stream_path: String, fade_seconds: float = FADE_SECONDS) -> void
 		tween.chain().tween_callback(outgoing.stop)
 
 
+## Fades out and stops whichever player(s) are currently playing.
 func stop_music(fade_seconds: float = FADE_SECONDS) -> void:
 	_current_track = ""
 	for player in _players:
@@ -61,6 +65,7 @@ func stop_music(fade_seconds: float = FADE_SECONDS) -> void:
 			tween.tween_callback(player.stop)
 
 
+## Plays a one-shot sound effect, interrupting whatever SFX was playing.
 func play_sfx(stream_path: String) -> void:
 	var stream: AudioStream = load(stream_path) as AudioStream
 	if stream == null:

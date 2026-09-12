@@ -35,6 +35,9 @@ func _ready() -> void:
 		new_game()
 
 
+## Resets every field to a fresh start: level-1 party, starting gold and
+## items, zero flags, spawn position. Called automatically on first boot if
+## nothing has loaded a save yet.
 func new_game() -> void:
 	party.clear()
 	vitals.clear()
@@ -54,6 +57,9 @@ func new_game() -> void:
 	add_item(&"ether", 1)
 
 
+## Adds `member` to the party and gives it a fresh vitals/xp entry, unless
+## one already exists under its id (see the known limitation in
+## PROGRESS.md: two members sharing a content id share one vitals entry).
 func add_party_member(member: PartyMemberData) -> void:
 	party.append(member)
 	vitals[member.id] = {"hp": member.max_hp, "sp": member.max_sp}
@@ -69,12 +75,18 @@ func battle_party() -> Array[BattlerData]:
 	return out
 
 
+## Commits each player-side Battler's current hp/sp back into GameState.
+## Called once, at the end of a battle — this is the only path that lets
+## combat's outcome reach a save (see test_save_hardening.gd).
 func store_vitals(battlers: Array) -> void:
 	for b in battlers:
 		if b is Battler and b.is_player_side:
 			vitals[b.data.id] = {"hp": b.hp, "sp": b.sp}
 
 
+## The inverse of store_vitals(): pushes each player-side Battler's hp/sp to
+## whatever GameState last committed. Called right after BattleManager builds
+## the Battlers for a new fight.
 func restore_vitals_into(battlers: Array) -> void:
 	for b in battlers:
 		if b is Battler and b.is_player_side and vitals.has(b.data.id):
@@ -89,6 +101,9 @@ static func xp_for_level(level: int) -> int:
 	return int(round(XP_CURVE_BASE * pow(float(maxi(1, level)), XP_CURVE_EXPONENT)))
 
 
+## Adds xp to every party member and levels up each one as many times as its
+## banked xp allows, one level at a time (so a huge award can chain several
+## level-ups in one call).
 func award_xp(amount: int) -> void:
 	for member in party:
 		experience[member.id] = int(experience.get(member.id, 0)) + amount
@@ -123,6 +138,7 @@ func _level_up(member: PartyMemberData, announce: bool = true) -> void:
 		party_member_leveled.emit(member, member.level, learned)
 
 
+## Adds (or subtracts) gold, floored at zero — gold can never go negative.
 func add_gold(amount: int) -> void:
 	gold = maxi(0, gold + amount)
 	gold_changed.emit(gold)
@@ -130,11 +146,15 @@ func add_gold(amount: int) -> void:
 
 # --- Inventory --------------------------------------------------------------
 
+## Adds `count` of an item to the inventory (creating the entry if needed).
 func add_item(id: StringName, count: int = 1) -> void:
 	inventory[id] = int(inventory.get(id, 0)) + count
 	inventory_changed.emit()
 
 
+## Removes `count` of an item if the inventory has enough; returns false and
+## changes nothing otherwise. Erases the entry entirely rather than leaving
+## a zero count behind.
 func consume_item(id: StringName, count: int = 1) -> bool:
 	var have: int = int(inventory.get(id, 0))
 	if have < count:
@@ -147,23 +167,30 @@ func consume_item(id: StringName, count: int = 1) -> bool:
 	return true
 
 
+## How many of `id` the inventory currently holds (0 if none).
 func item_count(id: StringName) -> int:
 	return int(inventory.get(id, 0))
 
 
 # --- Flags ------------------------------------------------------------------
 
+## Sets a story flag to any Variant value (usually a bool, but not required).
 func set_flag(flag: StringName, value: Variant = true) -> void:
 	story_flags[flag] = value
 	flag_changed.emit(flag, value)
 
 
+## Reads a story flag, or `fallback` if it's never been set.
 func get_flag(flag: StringName, fallback: Variant = false) -> Variant:
 	return story_flags.get(flag, fallback)
 
 
 # --- Serialisation (SPEC §7: one JSON blob, don't over-normalise) -----------
 
+## Serialises every durable field into the one JSON-safe blob a save slot
+## stores (SPEC §7). Levelled stats are NOT written — only the level number
+## is, because from_dict() replays growth from the current curve rather than
+## trusting numbers a save file could have stale or tampered values for.
 func to_dict() -> Dictionary:
 	var party_out: Array = []
 	for member in party:
@@ -195,6 +222,10 @@ func to_dict() -> Dictionary:
 	}
 
 
+## Restores GameState from a to_dict() blob. Rejects (returning false, and
+## changing nothing) a blob with no version or a version newer than this
+## build understands. A party entry naming content that no longer exists is
+## dropped with a warning rather than failing the whole load.
 func from_dict(data: Dictionary) -> bool:
 	var version: int = int(data.get("version", 0))
 	if version <= 0 or version > SaveFormat.VERSION:

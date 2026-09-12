@@ -28,16 +28,22 @@ func _ready() -> void:
 	_roll_threshold()
 
 
+## Starts banking distance, with a grace period before the first roll.
+## Called when the player enters the zone.
 func arm() -> void:
 	_armed = true
 	_banked = -grace_metres
 	_roll_threshold()
 
 
+## Stops banking distance. Called when the player leaves the zone.
 func disarm() -> void:
 	_armed = false
 
 
+## Banks `metres` of walking and, once the rolled threshold is crossed,
+## emits encounter_triggered and re-arms with a fresh grace period and
+## threshold. A no-op while disarmed or with no table assigned.
 func accumulate(metres: float) -> void:
 	if not _armed or table == null:
 		return

@@ -254,6 +254,8 @@ func _rebuild_group(box: VBoxContainer, group: Array[Battler], show_sp: bool) ->
 		box.add_child(_make_label(text, 16))
 
 
+## Adds a line to the on-screen log, trimming to the last LOG_LINES entries.
+## Public because BattleManager.action_resolved lines land here directly.
 func append_log(line: String) -> void:
 	_log_lines.append(line)
 	while _log_lines.size() > LOG_LINES:

@@ -30,7 +30,7 @@ so go and level up first.
 GODOT=/path/to/godot ./run_tests.sh
 ```
 
-**93 tests / 751 assertions**, headless, exits non-zero on failure. Run with
+**121 tests / 835 assertions**, headless, exits non-zero on failure. Run with
 [GUT 9.7.1](addons/gut) (vendored in `addons/gut/`, suite in `test/unit/`).
 Covers the type chart, the damage formula (multipliers, variance bounds, the
 minimum-1 floor), One More, progression and stat growth, save round-trips
@@ -53,7 +53,10 @@ Progress on the hardening pass is logged in [`PROGRESS.md`](PROGRESS.md).
 ```
 scenes/                 World.tscn (overworld), Battle.tscn (combat)
 scripts/autoload/       GameState, BattleManager, SaveManager, AudioManager
-scripts/combat/         type_chart.gd + damage.gd — the combat identity
+scripts/combat/         type_chart.gd + damage.gd (combat identity), plus
+                        enemy_ai.gd / battle_log.gd / battler_group.gd —
+                        pulled out of battle_manager.gd to keep it under
+                        ~300 lines and independently testable
 scripts/data/           Resource definitions + ContentDB loader
 scripts/world/          player controller, encounter zone, boss gate
 scripts/ui/             combat UI

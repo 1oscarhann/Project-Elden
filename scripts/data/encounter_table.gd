@@ -17,6 +17,9 @@ extends Resource
 @export var boss: EnemyData = null
 
 
+## Rolls one encounter from `encounters`, weighted by `weights`. Falls back
+## to a uniform roll if the weights are malformed (missing, or the wrong
+## length). Returns null if there is nothing to pick from.
 func pick(rng: RandomNumberGenerator) -> EnemyData:
 	if encounters.is_empty():
 		return null

@@ -40,6 +40,10 @@ func set_seed(seed_value: int) -> void:
 	_rng.seed = seed_value
 
 
+## Starts a fresh fight: builds a Battler for each party member and foe, then
+## kicks off round 1. Emits battle_started, then either awaiting_action (the
+## player moves first) or battle_finished if the fight somehow starts already
+## decided.
 func start_battle(party: Array[BattlerData], foes: Array[EnemyData]) -> void:
 	player_party.clear()
 	enemies.clear()
@@ -69,13 +73,13 @@ func _begin_round() -> void:
 
 func _begin_player_phase() -> void:
 	phase = Combat.Phase.PLAYER
-	_queue = _alive(player_party)
+	_queue = BattlerGroup.alive(player_party)
 	_next_in_queue()
 
 
 func _begin_enemy_phase() -> void:
 	phase = Combat.Phase.ENEMY
-	_queue = _alive(enemies)
+	_queue = BattlerGroup.alive(enemies)
 	_next_in_queue()
 
 
@@ -151,7 +155,9 @@ func _resolve(action: BattleAction) -> void:
 func _resolve_offensive(action: BattleAction) -> bool:
 	var target: Battler = action.target
 	if target == null or not target.is_alive():
-		target = _random_living_foe(action.actor)
+		target = BattlerGroup.random_alive(
+			enemies if action.actor.is_player_side else player_party, _rng
+		)
 	if target == null:
 		return false
 
@@ -172,7 +178,7 @@ func _resolve_offensive(action: BattleAction) -> bool:
 		result = Damage.basic_attack(action.actor, target, _rng)
 
 	target.take_damage(result.amount)
-	action_resolved.emit(_describe(action, target, result))
+	action_resolved.emit(BattleLog.describe_attack(action, target, result))
 	return result.grants_one_more()
 
 
@@ -182,61 +188,29 @@ func _resolve_item(action: BattleAction) -> void:
 		return
 	var target: Battler = action.target if action.target != null else action.actor
 
+	var amount: int = 0
 	match item.effect:
 		ItemData.Effect.HEAL_HP:
-			var healed: int = target.heal(item.amount)
-			action_resolved.emit(
-				"%s uses %s. %s recovers %d HP." % [
-					action.actor.display_name(), item.display_name,
-					target.display_name(), healed,
-				]
-			)
+			amount = target.heal(item.amount)
 		ItemData.Effect.HEAL_SP:
-			var restored: int = target.restore_sp(item.amount)
-			action_resolved.emit(
-				"%s uses %s. %s recovers %d SP." % [
-					action.actor.display_name(), item.display_name,
-					target.display_name(), restored,
-				]
-			)
-		_:
-			action_resolved.emit("%s uses %s." % [action.actor.display_name(), item.display_name])
+			amount = target.restore_sp(item.amount)
+
+	action_resolved.emit(BattleLog.describe_item(action, item, target, amount))
 
 	if action.actor.is_player_side:
 		GameState.consume_item(item.id)
 
 
-func _describe(action: BattleAction, target: Battler, result: Damage.Result) -> String:
-	var verb: String = action.move.display_name if action.move != null else "Attack"
-	if result.was_immune:
-		return "%s uses %s. %s is unaffected." % [
-			action.actor.display_name(), verb, target.display_name(),
-		]
-
-	var line: String = "%s uses %s. %s takes %d damage" % [
-		action.actor.display_name(), verb, target.display_name(), result.amount,
-	]
-	if result.was_crit:
-		line += " (CRITICAL)"
-	elif result.hit_weakness:
-		line += " (WEAK!)"
-	elif result.was_resisted:
-		line += " (resisted)"
-	return line + "."
-
-
 func _try_flee(actor: Battler) -> bool:
-	var foes: Array[Battler] = _alive(enemies if actor.is_player_side else player_party)
+	if BattlerGroup.has_boss(enemies):
+		action_resolved.emit("You can't run from this.")
+		return false
+
+	var foes: Array[Battler] = BattlerGroup.alive(enemies if actor.is_player_side else player_party)
 	var fastest: int = 1
 	for f in foes:
 		fastest = maxi(fastest, f.data.speed)
-
-	var chance: float = clampf(
-		Combat.BASE_FLEE_CHANCE + (float(actor.data.speed - fastest) * 0.02), 0.05, 0.95
-	)
-	if _has_boss():
-		action_resolved.emit("You can't run from this.")
-		return false
+	var chance: float = Combat.flee_chance(actor.data.speed, fastest)
 
 	if _rng.randf() < chance:
 		action_resolved.emit("%s fled." % actor.display_name())
@@ -247,47 +221,26 @@ func _try_flee(actor: Battler) -> bool:
 	return false
 
 
+## Default aggression for a non-enemy Battler (never actually reached in
+## play — only EnemyData battlers act during the enemy phase — kept as a
+## sane fallback rather than an assumption EnemyAI has to make).
+const _DEFAULT_AGGRESSION := 0.7
+
+
 func _choose_enemy_action(actor: Battler) -> BattleAction:
-	var targets: Array[Battler] = _alive(player_party)
-	if targets.is_empty():
-		return BattleAction.defend(actor)
-
-	var target: Battler = targets[_rng.randi() % targets.size()]
-	var options: Array[MoveData] = actor.usable_moves()
-
-	var aggression: float = 0.7
+	var aggression: float = _DEFAULT_AGGRESSION
 	if actor.data is EnemyData:
 		aggression = (actor.data as EnemyData).aggression
-
-	if options.is_empty() or _rng.randf() > aggression:
-		return BattleAction.attack(actor, target)
-
-	# Play to win: prefer a move that hits this target's weakness, because the
-	# One More rule means the AI gets punished for ignoring the type chart too.
-	var best: MoveData = options[0]
-	var best_score: float = -1.0
-	for move in options:
-		if not move.is_offensive():
-			continue
-		var score: float = (
-			float(move.power) * TypeChart.multiplier(move.type, target.data.defend_type)
-		)
-		if score > best_score:
-			best_score = score
-			best = move
-
-	if best_score <= 0.0:
-		return BattleAction.attack(actor, target)
-	return BattleAction.skill(actor, target, best)
+	return EnemyAI.choose_action(actor, BattlerGroup.alive(player_party), aggression, _rng)
 
 
 func _check_end() -> bool:
 	if phase == Combat.Phase.FINISHED:
 		return true
-	if _alive(enemies).is_empty():
+	if BattlerGroup.alive(enemies).is_empty():
 		_finish(Combat.Outcome.VICTORY)
 		return true
-	if _alive(player_party).is_empty():
+	if BattlerGroup.alive(player_party).is_empty():
 		_finish(Combat.Outcome.DEFEAT)
 		return true
 	return false
@@ -326,28 +279,6 @@ func _all_battlers() -> Array[Battler]:
 	return out
 
 
-func _alive(group: Array[Battler]) -> Array[Battler]:
-	var out: Array[Battler] = []
-	for b in group:
-		if b.is_alive():
-			out.append(b)
-	return out
-
-
-func _random_living_foe(actor: Battler) -> Battler:
-	var pool: Array[Battler] = _alive(enemies if actor.is_player_side else player_party)
-	if pool.is_empty():
-		return null
-	return pool[_rng.randi() % pool.size()]
-
-
-func _has_boss() -> bool:
-	for foe in enemies:
-		if foe.data is EnemyData and (foe.data as EnemyData).is_boss:
-			return true
-	return false
-
-
 # --- Encounter hand-off (SPEC §9 step 2) ------------------------------------
 #
 # World.tscn queues the foes, then swaps scenes. Battle.tscn reads them back on
@@ -357,10 +288,13 @@ func _has_boss() -> bool:
 var pending_encounter: Array[EnemyData] = []
 
 
+## Called by World.tscn right before it swaps to Battle.tscn.
 func queue_encounter(foes: Array[EnemyData]) -> void:
 	pending_encounter = foes.duplicate()
 
 
+## Called by Battle.tscn on _ready(). Clears the queue so a stray re-read
+## (or a second Battle.tscn instance) can't fight the same foes twice.
 func take_pending_encounter() -> Array[EnemyData]:
 	var foes: Array[EnemyData] = pending_encounter.duplicate()
 	pending_encounter.clear()

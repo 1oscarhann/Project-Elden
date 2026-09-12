@@ -31,14 +31,17 @@ func _ready() -> void:
 	add_child(_http)
 
 
+## True once login()/register() has stashed a bearer token.
 func is_signed_in() -> bool:
 	return _token != ""
 
 
+## The on-disk path a given slot index reads from / writes to.
 func slot_path(slot: int) -> String:
 	return "%s/slot_%d.json" % [SAVE_DIR, slot]
 
 
+## True if `slot` has a save file on disk (does not validate its contents).
 func slot_exists(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
@@ -67,6 +70,9 @@ func slot_summary(slot: int) -> Dictionary:
 
 # --- Local (build order step 5) --------------------------------------------
 
+## Writes the current GameState to `slot` as JSON. Refuses (and returns
+## false without touching the file) if the serialised blob exceeds
+## SaveFormat.MAX_BLOB_BYTES.
 func save_local(slot: int) -> bool:
 	var blob: Dictionary = GameState.to_dict()
 	var text: String = JSON.stringify(blob)
@@ -88,6 +94,9 @@ func save_local(slot: int) -> bool:
 	return true
 
 
+## Reads `slot` from disk and restores it into GameState via from_dict().
+## Returns false (leaving GameState untouched) if the slot is empty or the
+## blob fails validation.
 func load_local(slot: int) -> bool:
 	var blob: Dictionary = _read_slot(slot)
 	if blob.is_empty():
@@ -98,6 +107,7 @@ func load_local(slot: int) -> bool:
 	return ok
 
 
+## Removes `slot`'s save file, if it exists. A no-op otherwise.
 func delete_local(slot: int) -> void:
 	if slot_exists(slot):
 		DirAccess.remove_absolute(slot_path(slot))
@@ -116,10 +126,13 @@ func _read_slot(slot: int) -> Dictionary:
 
 # --- Cloud (build order step 7) --------------------------------------------
 
+## Creates an account on the backend and, on success, stashes its bearer
+## token so subsequent sync_up()/sync_down() calls are authenticated.
 func register(username: String, password: String) -> void:
 	await _auth_call("/register", username, password)
 
 
+## Signs into an existing account and stashes its bearer token on success.
 func login(username: String, password: String) -> void:
 	await _auth_call("/login", username, password)
 
@@ -148,6 +161,9 @@ func sync_up(slot: int) -> void:
 	)
 
 
+## Pulls `slot` from the backend and restores it into GameState. A no-op
+## returning false if no api_base_url is configured or nobody is signed in
+## — never blocks the game on a cloud round trip that might not happen.
 func sync_down(slot: int) -> bool:
 	if api_base_url == "" or not is_signed_in():
 		return false

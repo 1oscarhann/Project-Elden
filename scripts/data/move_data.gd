@@ -26,9 +26,12 @@ enum Effect { DAMAGE, HEAL, BUFF_ATK, BUFF_DEF }
 @export var crit_chance: float = 0.05
 
 
+## True for a damage-dealing move — the kind BattleAction.skill() needs a
+## target for, and the kind EnemyAI scores against the type chart.
 func is_offensive() -> bool:
 	return effect == Effect.DAMAGE
 
 
+## True if this move can't currently be afforded.
 func costs_more_sp_than(available: int) -> bool:
 	return sp_cost > available

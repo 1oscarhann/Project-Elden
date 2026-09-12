@@ -25,14 +25,19 @@ func _init(battler_data: BattlerData, player_side: bool = false) -> void:
 	sp = data.max_sp
 
 
+## True while hp is above zero.
 func is_alive() -> bool:
 	return hp > 0
 
 
+## The name to show in UI and log lines — passes through to the underlying
+## BattlerData.
 func display_name() -> String:
 	return data.display_name
 
 
+## Reduces hp by `amount` (floored at zero) and emits died() on knockout.
+## Amounts <= 0 are ignored, not treated as healing.
 func take_damage(amount: int) -> void:
 	if amount <= 0:
 		return
@@ -42,6 +47,8 @@ func take_damage(amount: int) -> void:
 		died.emit()
 
 
+## Restores hp, capped at max_hp. Returns how much was actually recovered
+## (which can be less than `amount` near full health).
 func heal(amount: int) -> int:
 	var before: int = hp
 	hp = mini(data.max_hp, hp + amount)
@@ -49,6 +56,8 @@ func heal(amount: int) -> int:
 	return hp - before
 
 
+## Deducts `amount` sp if there's enough; returns false and changes nothing
+## otherwise.
 func spend_sp(amount: int) -> bool:
 	if amount > sp:
 		return false
@@ -56,6 +65,7 @@ func spend_sp(amount: int) -> bool:
 	return true
 
 
+## Restores sp, capped at max_sp. Returns how much was actually recovered.
 func restore_sp(amount: int) -> int:
 	var before: int = sp
 	sp = mini(data.max_sp, sp + amount)
@@ -68,6 +78,7 @@ func begin_round() -> void:
 	used_one_more = false
 
 
+## This battler's moves whose sp_cost it can currently afford.
 func usable_moves() -> Array[MoveData]:
 	var out: Array[MoveData] = []
 	for move in data.moves:
