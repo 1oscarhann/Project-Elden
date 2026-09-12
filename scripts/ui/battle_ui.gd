@@ -80,6 +80,7 @@ func _build() -> void:
 	root.add_child(_log_label)
 
 	var menu_panel := PanelContainer.new()
+	menu_panel.name = "MenuPanel"
 	menu_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	menu_panel.offset_left = -260
 	menu_panel.offset_top = -240
@@ -93,9 +94,20 @@ func _build() -> void:
 	_prompt = _make_label("", 14)
 	inner.add_child(_prompt)
 
+	# A ScrollContainer between the panel and the button list breaks minimum
+	# -size propagation: however many buttons a menu holds (the skill menu
+	# grows with the learnset — 7 entries by level 5 overflows a plain
+	# VBoxContainer in this fixed-height panel), the panel itself never grows
+	# past its anchored footprint. Extra entries scroll instead of spilling
+	# past the canvas or overlapping the log panel to its left.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	inner.add_child(scroll)
+
 	_menu_box = VBoxContainer.new()
-	_menu_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inner.add_child(_menu_box)
+	_menu_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_menu_box)
 
 
 func _make_label(text: String, size: int) -> Label:

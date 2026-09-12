@@ -228,3 +228,129 @@ reach a save). Re-ran the scan after: zero missing.
 - [x] Only ONE system changed (code cleanup — naming/docstrings/split, pure
       refactor, zero behaviour change)
 - [x] Committed
+
+---
+
+## Iteration 4 — Task 6 (partial: UI structure fix); Tasks 5 & 7 confirmed SKIP
+
+**System changed:** UI structure (`battle_ui.gd`). Nothing else.
+
+### Task 6, part 1 — theme resource: SKIPPED
+
+"Make every UI element use the existing theme resource" assumes one exists.
+**None does** — checked for any `.theme` file or `Theme` resource anywhere in
+the project; there is none. `BattleUI` sets font sizes directly
+(`add_theme_font_size_override`) because there's nothing else to point at.
+Creating a Theme resource now would mean choosing colours and fonts, which
+is explicitly out of bounds for this pass ("NEVER invent colours, fonts, or
+redesign UI"). Logging this rather than guessing — a theme resource is a
+design artefact, not a code cleanup.
+
+### Task 6, part 2 — anchor/margin overflow: found a real bug, fixed it
+
+Rather than reasoning about the anchor math by eye, wrote
+`test/unit/test_ui_layout.gd`, which actually instantiates `BattleUI`,
+drives it through real gameplay (the actual hero content, levelled up
+through `GameState.award_xp()` — not fabricated data), and reads back real
+`Control` rects from the live scene tree.
+
+**Confirmed a genuine, currently-reachable overflow**: the skill menu's
+button list was a plain `VBoxContainer` inside a fixed-height panel
+(224px). By level 5, the hero's real learnset (Frost, Radiance, Gale, Mend
+on top of the starting Cleave and Ember — SPEC content, reached by normal
+levelling, no new content needed to trigger it) grows to 6 moves + "Back" =
+7 buttons, and the panel's forced minimum size pushed the last button 25px
+past the bottom of the 720px canvas (measured: button bottom edge at
+y=745). This is exactly the class of bug Task 6 asks to catch.
+
+**Fix**: wrapped the button list in a `ScrollContainer`. This is a
+structural fix, not a styling one — a `ScrollContainer` breaks minimum-size
+propagation, so the panel's on-screen footprint stays fixed at its intended
+224px regardless of how many buttons a menu holds; anything that doesn't
+fit scrolls instead of spilling past the canvas or encroaching on the log
+panel to its left. No colour, font, or spacing value was invented or
+changed.
+
+Getting the test right took two passes: the first version asserted every
+button's raw global position was on-canvas, which is the wrong invariant
+for a scrollable list — a scrolled-out button is *supposed* to sit beyond
+the visible viewport; that's what scrolling means. Rewrote it to check what
+actually matters: the `ScrollContainer`'s own (clipped) viewport stays
+on-canvas, `clip_contents` is actually enabled (so overflow content is
+truly never drawn outside it), and — to catch the fix trading a visual bug
+for a worse one — that scrolling to the bottom actually brings "Back" fully
+into view. A clipped-but-unreachable "Back" button would be a softlock,
+which is worse than the original overflow.
+
+**On "verify at both 1920x1080 and 1280x720":** the project runs
+`canvas_items` stretch mode with a fixed 1280x720 logical canvas
+(`project.godot` `[display]`). Both target resolutions are 16:9, so 1080p
+is not a second layout — it's the same 1280x720 canvas scaled uniformly by
+1.5x. Uniform scaling of a matching aspect ratio cannot introduce an
+overflow that isn't already present at the base resolution; what actually
+varies is *content* (how many buttons a menu holds), which is what the test
+drives instead. Stated explicitly in the test file rather than left as an
+unstated assumption.
+
+### Task 5 — model integration: SKIP confirmed again
+
+`/assets/packs/` still does not exist (re-checked; unchanged since
+iteration 1). Placeholder capsules remain. Nothing to import.
+
+### Task 7 — animation wiring: SKIP, newly confirmed
+
+Checked for any imported model file (`.glb`/`.gltf`/`.fbx`/`.dae`) and any
+`AnimationPlayer`/`AnimationTree` node in any scene: **none exist**. There
+is nothing to hook idle/walk/attack state to. This follows directly from
+Task 5's precondition also being unmet — no models means no animations
+shipped with them.
+
+### Observed but not fixed (outside every task, logged only)
+
+`project.godot`'s `[rendering]` section is missing the explicit
+`renderer/rendering_method="forward_plus"` and
+`renderer/rendering_method.web="gl_compatibility"` lines the original spec
+called for (SPEC §4: "Web renderer | Compatibility / WebGL 2 | The stable
+shippable target"). It currently has `.mobile="gl_compatibility"` instead of
+`.web`. This predates this hardening loop entirely — it happened inside the
+original vertical-slice commit (`e7177a2`), most likely because a
+`ProjectSettings.save()` call from `scripts/tools/setup_input.gd` rewrote
+the file and dropped the value matching the compiled default (`forward_plus`
+needs no override) while also losing the `.web` override along the way.
+Not one of the seven listed tasks, and fixing project render settings isn't
+"UI structure" — flagging it here rather than touching it, since silently
+"fixing" something outside the task list is exactly the kind of invented
+work this pass is supposed to avoid.
+
+### Self-check
+
+- [x] Project launches without errors
+- [x] All GUT tests green (124/124, 859 asserts)
+- [x] No model/texture/shader/animation generated — none exist to touch,
+      confirmed by re-checking the gate
+- [x] No UI colours/fonts invented — only a `ScrollContainer` (structure)
+      was added; the missing theme resource itself was skipped, not
+      papered over
+- [x] Only ONE system changed (`battle_ui.gd` + its test)
+- [x] Committed
+
+---
+
+## Loop complete
+
+All seven tasks in the priority list have been addressed:
+
+| # | Task | Outcome |
+|---|------|---------|
+| 1 | GUT test suite | Done (iteration 1) |
+| 2 | Hardcoded stats → `.tres` | Already done before this loop; verified (iteration 2) |
+| 3 | Save/load hardening | Done — two defects fixed, one limitation logged (iteration 2) |
+| 4 | Code cleanup | Done — split `battle_manager.gd`, docstring pass (iteration 3) |
+| 5 | Model integration | SKIP — `/assets/packs/` doesn't exist |
+| 6 | UI structure | Partial — overflow bug fixed; theme-resource part SKIP (no theme exists) |
+| 7 | Animation wiring | SKIP — no models/animations exist |
+
+Per the loop's own rule ("If you run out of listed tasks: STOP. Do not
+invent work"), this is the end of the pass. Final state: 124 tests, 859
+asserts, all green; project launches clean; four commits, each a single
+system, each bisectable.
