@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="script_player"]
+[ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="frames_player"]
+[ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
+
+[sub_resource type="RectangleShape2D" id="shape_feet"]
+size = Vector2(16, 8)
+
+[node name="Player" type="CharacterBody2D"]
+motion_mode = 1
+script = ExtResource("script_player")
+
+[node name="Shadow" type="Sprite2D" parent="."]
+modulate = Color(1, 1, 1, 0.45)
+texture = ExtResource("tex_shadow")
+offset = Vector2(0, -4)
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("frames_player")
+animation = &"idle_down"
+autoplay = "idle_down"
+offset = Vector2(0, -12)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -2)
+shape = SubResource("shape_feet")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(2, 2)
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0

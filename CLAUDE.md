@@ -86,6 +86,10 @@ The character pack is `CraftPix free`. Use the **Unarmed / Without_shadow** shee
   - `Unarmed_Hurt`  — 5 cols × 4 rows
   - `Unarmed_Death` — 7 cols × 4 rows
 - The character art sits small inside the 64px cell with padding — that's expected, keep the full 64px frame so animations line up.
+- **Measured in Phase 1 (exact, verified with `Image.get_used_rect()` on every frame):** the art
+  occupies only ~17x25 px inside the 64x64 cell. **The feet sit on cell-y 44 on every row of every
+  sheet.** So with `centered = true`, an `offset` of `(0, -12)` puts the feet exactly on the node
+  origin — which is what Y-sorting reads. Reuse that number for any new Unarmed sheet.
 - There is **no left/right flip needed** — the sheet already contains separate left and right rows. (You *may* instead use only `down/side/up` and flip the side row to save memory; either is fine, pick one and be consistent.)
 
 ## Asset licence
@@ -101,7 +105,23 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 0 complete.** Next up: `docs/phases/phase01_player.md`.
+**Phase 1 complete.** Next up: `docs/phases/phase02_world.md`.
+
+### Phase 1 notes
+
+- **Input actions** (in `project.godot`, bound by *physical* keycode so AZERTY/QWERTZ work):
+  `move_up/down/left/right` = WASD + arrows, `run` = Shift.
+- **Animation is `SpriteFrames` + a play-on-change string swap**, not an `AnimationTree`.
+  `scenes/player/player_frames.tres` holds 12 animations (`idle|walk|run` x `down|left|right|up`,
+  104 atlas regions). It is generated from the sheet grid, so regenerate rather than hand-edit.
+  Idle 6 fps, walk 10 fps, run 12 fps, all looping.
+- **`player_frames.tres` lives in `scenes/player/`, not `resources/`** — `resources/` is reserved
+  for data-driven *game data* (items, recipes). A SpriteFrames is scene-coupled art config.
+- **All 4 direction rows are used; nothing is flipped.** Pick this consistently for new sprites.
+- **The Player node is NOT `y_sort_enabled`; its parent `World` is.** Y-sorting the player itself
+  would sort its own Shadow against its Sprite. The world sorts the player as one unit, which is
+  correct because the player's origin is on its feet.
+- `motion_mode = FLOATING` on the `CharacterBody2D` — top-down has no floor/gravity concept.
 
 ### Phase 0 notes (decisions that deviate from the spec — read before Phase 1)
 
