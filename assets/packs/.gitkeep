@@ -1,0 +1,4 @@
+Drop character models here — see docs/ASSETS.md.
+
+Five are needed: hero, frostbit, emberling, gustling, warden.
+.glb, 1 unit = 1 metre, feet-origin, facing -Z.

@@ -46,6 +46,9 @@ Progress on the hardening pass is logged in [`PROGRESS.md`](PROGRESS.md).
   schema, build order, and the decisions taken during review.
 - [`docs/REVIEW.md`](docs/REVIEW.md) — technical pushback on the spec, plus an
   appendix of the silent failure modes hit while building the slice.
+- [`docs/ASSETS.md`](docs/ASSETS.md) — what models the code is wired for:
+  scale, format, animation clips, and where they go. Art is the one thing
+  blocking the placeholder capsules from being replaced.
 - [`backend/README.md`](backend/README.md) — the save API.
 
 ## Layout
