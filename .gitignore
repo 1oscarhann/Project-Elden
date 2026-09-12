@@ -1,0 +1,24 @@
+# Godot 4 -------------------------------------------------------------------
+# Editor cache + imported/compiled assets. Regenerated on open; never commit.
+.godot/
+
+# Android build template
+/android/
+
+# Exported builds. export_presets.cfg can hold signing paths/passwords.
+/build/
+/export/
+export_presets.cfg
+
+# Godot 3 leftovers (harmless, kept for safety)
+.import/
+
+# Mono / C# (unused today, cheap insurance)
+.mono/
+data_*/
+mono_crash.*.json
+
+# OS cruft -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*~
