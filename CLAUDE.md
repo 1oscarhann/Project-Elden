@@ -108,6 +108,36 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### UI theme (post-Phase-9 fix)
+
+- **The RPG UI pack was never actually in the repo**, so Phase 6's "theming" was plain default
+  Godot styling the whole time. `assets/ui/source/` now holds the four **neutral** sheets only —
+  `Main_tiles`, `Buttons`, `Inventory`, `Settings`. The shop, equipment doll, level select,
+  win/lose star screens, circle menu and the pack's own combat icons are **deliberately not
+  copied in at all**; item icons stay in `assets/icons/`.
+- **⚠️ A theme alone changes nothing if the scenes override it.** Every UI scene carried its own
+  `StyleBoxFlat` (`theme_override_styles/panel`), and a local override always beats the project
+  theme — that is the real reason the old styling never took. Those overrides are gone.
+- **`tools/build_ui_atlas.gd`** cuts 8 pieces out of the pack and **measures each one's border
+  inset**, which is where the nine-slice margins come from. **⚠️ The obvious button rows are
+  useless — "RESTART" / "RESUME" / "SAVE" are baked into the pixels.** The blank ones are in the
+  top-left block of `Buttons.png`. The four shades are two greens x (with / without a brown drop
+  shadow), so: `normal` = mid+shadow, `hover` = light+shadow, `pressed` = mid with the shadow
+  removed, which is what reads as pushed in.
+- **Panel margins are 6, not the measured 4** — the corner radius is bigger than the straight
+  border, and slicing at 4 drags the curve into a smear.
+- **⚠️ The pack's slot swatches are flat single colours** (brown `#9d775d`, tan `#cda677`) — there
+  is no bordered slot sprite to nine-slice. The grid look comes from the gaps between slots.
+- **`tools/build_ui_theme.gd`** generates `resources/ui_theme.tres` and asserts every textured
+  stylebox survives the round-trip. Registered as `gui/theme/custom` in `project.godot`, so new
+  UI scenes inherit it with no wiring.
+- **`Label` is deliberately NOT themed globally.** HUD labels sit over the world and must stay
+  light with an outline; only text on parchment goes dark, via the `PanelText` / `PanelTextDim`
+  type variations. Other variations: `SlotPanel` (inventory slots), `RecipeRow` (craft rows,
+  inset tan so parchment does not stack on parchment).
+- **`tools/ui_shots.gd`** shoots the HUD, bag and craft menu — a theme that loads is not the same
+  as a theme that renders.
+
 ### Phase 9 notes
 
 - **Animal sheets are 32x32 cells, 4 rows, columns = frames** — verified on every sheet.

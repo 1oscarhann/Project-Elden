@@ -143,6 +143,12 @@ place_building={
 ]
 }
 
+[gui]
+
+; Every UI scene inherits this, so inventory, crafting, the HUD and anything
+; added later are styled without touching each scene. See tools/build_ui_theme.gd.
+theme/custom="res://resources/ui_theme.tres"
+
 [importer_defaults]
 
 ; Pixel-art defaults for every texture imported into this project, so no

@@ -1,24 +1,12 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/item_slot.gd" id="script_slot"]
 
-[sub_resource type="StyleBoxFlat" id="slot_style"]
-bg_color = Color(0.13, 0.11, 0.1, 0.72)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.45, 0.38, 0.3, 0.9)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
 [node name="ItemSlot" type="Panel"]
+theme_type_variation = &"SlotPanel"
 custom_minimum_size = Vector2(32, 32)
 offset_right = 32.0
 offset_bottom = 32.0
-theme_override_styles/panel = SubResource("slot_style")
 script = ExtResource("script_slot")
 
 [node name="Icon" type="TextureRect" parent="."]

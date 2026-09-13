@@ -10,6 +10,7 @@ Art assets by CraftPix.net (free licence — attribution required):
 - Top-Down Bushes Pixel Art (pack 141354)
 - 2D Top-Down Pixel Dungeon Asset Pack (pack 169442) — campfire flame only
 - Item/UI icon sheets (CraftPix)
+- Basic Pixel Art UI for RPG (pack 255216) — panels, buttons, slots and bars only
 
 https://craftpix.net
 

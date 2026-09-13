@@ -63,6 +63,9 @@ func set_open(value: bool) -> void:
 func _build_rows() -> void:
 	for recipe in Crafting.all_recipes():
 		var row := PanelContainer.new()
+		# Rows sit inside the parchment window, so they take the inset tan fill
+		# rather than stacking a second sheet of parchment on the first.
+		row.theme_type_variation = &"RecipeRow"
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 6)
 		row.add_child(box)
@@ -80,10 +83,12 @@ func _build_rows() -> void:
 		box.add_child(text)
 
 		var title := Label.new()
+		title.theme_type_variation = &"PanelText"
 		title.add_theme_font_size_override("font_size", 10)
 		text.add_child(title)
 
 		var detail := Label.new()
+		detail.theme_type_variation = &"PanelTextDim"
 		detail.add_theme_font_size_override("font_size", 8)
 		text.add_child(detail)
 
