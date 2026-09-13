@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://ihfv64srq6s5" path="res://assets/icons/items_tools_ores.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(224, 96, 32, 32)
+
+[resource]
+script = ExtResource("script_item")
+id = "workbench"
+display_name = "Workbench"
+icon = SubResource("icon")
+max_stack = 5
+category = 3
+description = "A sturdy bench. Place it to unlock deeper crafts."
+stats = {}

@@ -1,10 +1,14 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/campfire.gd" id="script_campfire"]
+[ext_resource type="Script" path="res://scripts/world/crafting_station.gd" id="script_station"]
 [ext_resource type="SpriteFrames" path="res://scenes/world/campfire_frames.tres" id="frames_fire"]
 
 [sub_resource type="CircleShape2D" id="shape_warmth"]
 radius = 56.0
+
+[sub_resource type="CircleShape2D" id="shape_station"]
+radius = 34.0
 
 [sub_resource type="CircleShape2D" id="shape_reach"]
 radius = 26.0
@@ -76,3 +80,10 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 8
 text = "[E] add wood"
 horizontal_alignment = 1
+
+[node name="Station" type="Area2D" parent="."]
+script = ExtResource("script_station")
+station_id = "campfire"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Station"]
+shape = SubResource("shape_station")

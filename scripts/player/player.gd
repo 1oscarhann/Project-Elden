@@ -61,6 +61,19 @@ func _on_animation_finished() -> void:
 	_swinging = false
 
 
+## Use whatever is in the selected hotbar slot. The player decides WHEN, the
+## item's own data decides WHAT — nothing here knows about warmth tonics.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("use_item"):
+		return
+	var id := Inventory.selected_item_id()
+	if id.is_empty():
+		return
+	if GameState.consume(id):
+		Inventory.remove_item(id, 1)
+		get_viewport().set_input_as_handled()
+
+
 func _physics_process(delta: float) -> void:
 	# get_vector() is already normalised, so diagonals are not faster.
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")

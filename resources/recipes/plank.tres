@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/recipe_data.gd" id="script_recipe"]
+[ext_resource type="Script" path="res://scripts/world/recipe_ingredient.gd" id="script_ingredient"]
+
+[sub_resource type="Resource" id="ing_wood"]
+script = ExtResource("script_ingredient")
+item_id = "wood"
+count = 1
+
+[resource]
+script = ExtResource("script_recipe")
+id = "plank"
+result_item_id = "plank"
+result_count = 2
+ingredients = Array[RecipeIngredient]([SubResource("ing_wood")])
+required_station = ""
+unlocked_by_default = true
+category = "materials"

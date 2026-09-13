@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://dxi1spovtbruj" path="res://assets/icons/items_raw_meat_bones.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(252, 180, 36, 36)
+
+[resource]
+script = ExtResource("script_item")
+id = "bone"
+display_name = "Bone"
+icon = SubResource("icon")
+max_stack = 30
+category = 0
+description = "Sturdy bone. Useful for tools and decor."
+stats = {}

@@ -52,6 +52,7 @@ func _process(_delta: float) -> void:
 	_phase4()
 	_phase5()
 	_phase6()
+	_phase7()
 	print("\n%d checks, %s" % [checks, "ALL GREEN" if fails == 0 else "%d FAILURE(S)" % fails])
 	get_tree().quit(fails)
 
@@ -183,3 +184,41 @@ func _phase6() -> void:
 	ck(Inventory.is_full() and Inventory.add_item("stone", 5) == 5,
 		"a full bag returns the whole amount as leftover")
 	Inventory.clear()
+
+
+func _phase7() -> void:
+	print("\n-- Phase 7: crafting --")
+	ck(Crafting.count() > 0, "recipes loaded from data", "%d recipes" % Crafting.count())
+	var plank: RecipeData = Crafting.get_recipe("plank")
+	var bench: RecipeData = Crafting.get_recipe("workbench")
+	var axe: RecipeData = Crafting.get_recipe("stone_axe")
+	ck(plank != null and bench != null and axe != null, "the tree's key recipes exist")
+	if plank == null or bench == null or axe == null:
+		return
+	Inventory.clear()
+	Inventory.add_item("wood", 2)
+	ck(not Crafting.can_craft(bench), "workbench blocked on raw wood alone — the tree is real")
+	Crafting.craft(plank)
+	Crafting.craft(plank)
+	Inventory.add_item("stone", 2)
+	ck(Crafting.can_craft(bench) and Crafting.craft(bench), "and unlocked once planks exist")
+	ck(Inventory.count("workbench") == 1, "result landed in the bag")
+	Inventory.clear()
+	Inventory.add_item("plank", 2)
+	Inventory.add_item("rope", 1)
+	Inventory.add_item("stone", 3)
+	ck(Crafting.has_ingredients(axe) and not Crafting.can_craft(axe),
+		"a station recipe is blocked away from its station")
+	Crafting.add_station("workbench")
+	ck(Crafting.can_craft(axe), "and allowed at it")
+	Crafting.remove_station("workbench")
+	Crafting.remove_station("workbench")
+	ck(not Crafting.has_station("workbench"), "station count cannot go negative")
+	Inventory.clear()
+	ck(not Crafting.craft(plank), "cannot craft without ingredients")
+	GameState.set_warmth(20.0)
+	ck(GameState.consume("warmth_tonic") and GameState.warmth > 20.0,
+		"a consumable applies its own stats")
+	ck(not GameState.consume("stone"), "a plain material does nothing")
+	Inventory.clear()
+	GameState.set_warmth(100.0)

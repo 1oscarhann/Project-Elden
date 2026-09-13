@@ -44,6 +44,7 @@ const STAGES: Array = [[0.60, "high"], [0.30, "medium"], [0.10, "low"], [0.0, "e
 @onready var _embers: CPUParticles2D = $Embers
 @onready var _prompt: Label = $Prompt
 @onready var _warmth_shape: CollisionShape2D = $WarmthArea/CollisionShape2D
+@onready var _station: CraftingStation = $Station
 
 var fuel := 0.0
 ## Multiplier tweened by the flare; kept separate so the per-frame size update
@@ -59,6 +60,7 @@ var _stage := ""
 func _ready() -> void:
 	fuel = clampf(start_fuel, 0.0, max_fuel)
 	(_warmth_shape.shape as CircleShape2D).radius = warmth_radius
+	_station.active = is_lit()
 	$WarmthArea.body_entered.connect(_on_warmth_entered)
 	$WarmthArea.body_exited.connect(_on_warmth_exited)
 	$Interact.body_entered.connect(_on_reach_entered)
@@ -127,6 +129,8 @@ func set_fuel(value: float) -> void:
 	if is_lit() != was_lit:
 		lit_changed.emit(is_lit())
 		_refresh()
+		# You cannot cook over a fire that has gone out.
+		_station.active = is_lit()
 
 
 ## The player is warm only while standing in the radius of a *lit* fire, so both

@@ -98,6 +98,21 @@ func chill() -> float:
 	return 1.0 - warmth / cold_threshold
 
 
+## Applies an item's consumable effects, reading them from its own stats.
+## Returns false if the item does nothing, so the caller knows not to spend it.
+## Effects live in ItemData.stats, so a new consumable is a .tres, not a change
+## here — hunger is read too, ready for when a hunger stat exists.
+func consume(item_id: String) -> bool:
+	var item := ItemDB.get_item(item_id)
+	if item == null:
+		return false
+	var warmth_gain := item.stat("warmth", 0.0)
+	if warmth_gain > 0.0:
+		set_warmth(warmth + warmth_gain)
+		return true
+	return false
+
+
 ## Called by heat sources as the player enters and leaves their radius.
 func add_heat_source() -> void:
 	_heat_sources += 1

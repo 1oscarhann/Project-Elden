@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/main/World.tscn" id="world"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Hotbar.tscn" id="hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InventoryPanel.tscn" id="bag"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CraftMenu.tscn" id="craft"]
 
 [node name="Main" type="Node2D"]
 
@@ -14,3 +15,5 @@
 [node name="Hotbar" parent="." instance=ExtResource("hotbar")]
 
 [node name="InventoryPanel" parent="." instance=ExtResource("bag")]
+
+[node name="CraftMenu" parent="." instance=ExtResource("craft")]

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://dgyg4yn3subtg" path="res://assets/icons/items_potions_flasks.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(0, 108, 36, 36)
+
+[resource]
+script = ExtResource("script_item")
+id = "warmth_tonic"
+display_name = "Warmth Tonic"
+icon = SubResource("icon")
+max_stack = 10
+category = 1
+description = "A hot spiced drink. Chases the cold off, wherever you are."
+stats = {"warmth": 45.0}

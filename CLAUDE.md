@@ -106,7 +106,49 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 6 complete.** Next up: `docs/phases/phase07_crafting.md`.
+**Phase 7 complete.** Next up: `docs/phases/phase08_building.md`.
+
+### Phase 7 notes
+
+- **Five autoloads now**, in order: `DayNight`, `GameState`, `ItemDB`, `Inventory`, `Crafting`.
+- **The recipe tree is emergent, not encoded.** `RecipeData` + `RecipeIngredient` `.tres` files in
+  `resources/recipes/`; a recipe whose ingredient is another recipe's result is simply deeper, and
+  nothing in `crafting.gd` knows the shape. Current tree:
+  `wood -> plank x2` · `fibre x2 -> rope` · `plank+fibre -> torch x2` ·
+  `wood x3 + stone -> campfire_kit` · `plank x4 + stone x2 -> workbench` ·
+  `bone + plank -> bone_tool` · **campfire:** `raw_meat -> cooked_meat`,
+  `berries + fibre -> warmth_tonic` · **workbench:** `plank x2 + rope + stone x3 -> stone_axe`.
+- **`craft()` is transactional.** If the result cannot fit once the ingredients are gone, every
+  ingredient is put back and nothing is crafted. Crafting is destructive, so "half consumed and
+  the output lost" has to be impossible.
+- **Stations use counted registration**, the same proven shape as heat sources:
+  `crafting_station.gd` is an `Area2D` you drop under any world object with a `station_id`, and
+  `Crafting.add_station()` / `remove_station()` tally it. Two overlapping stations of the same
+  kind cannot cancel each other out, and `_exit_tree` hands the registration back.
+- **The campfire is a `campfire` station only while lit** — it drives `$Station.active` from
+  `lit_changed`, so letting the fire die takes cooking with it.
+- **⚠️ Workbench recipes are unreachable in actual play until Phase 8.** Crafting a workbench
+  gives a *workbench item*; there is nothing to place it with yet, so `stone_axe` can only be
+  reached through the API (the regression suite does exactly that). This is what the phase spec
+  asked for — placement is Phase 8.
+- **Consumables read their own stats.** `GameState.consume(id)` applies `warmth` from
+  `ItemData.stats` and returns false if the item does nothing, so the caller knows not to spend
+  it. The player presses **F** to use the selected hotbar item. Nothing in that path knows what a
+  warmth tonic is. Hunger is read for too, ready for when a hunger stat exists.
+- **The craft menu lists EVERY unlocked recipe**, greying what you cannot make and saying why
+  ("needs workbench") — a visible locked branch is how the player learns the tree exists. Rows are
+  built from whatever `Crafting` loaded, so a new `.tres` appears with no UI change.
+- **Icon tool now handles all four sheets** and keys out **multiple background colours** — the
+  potions and meat sheets put each icon on its own backing tile *in a different colour from the
+  sheet border*, so keying only the corner left every icon on a brown square. Their layout also
+  differs: 2x upscale, 8x6 grid, pitch (80,72), 70px art halved with Lanczos into 36px cells.
+  New cells in use: `plank` tools (3,3) · `rope` tools (1,3) · `torch` tools (9,3) ·
+  `campfire_kit` tools (4,3) · `workbench` tools (7,3) · `stone_axe` tools (0,0) ·
+  `bone_tool` tools (6,2) · `raw_meat` meat (0,0) · `bone` meat (7,5) ·
+  `cooked_meat` food (2,5) · `warmth_tonic` potions (0,3).
+  `rope` borrows a bundle-of-sticks icon — the packs have no actual rope. Swap it when better art
+  turns up; it is one `region` line in `resources/items/rope.tres`.
+- **Keys:** C opens crafting, F uses the selected hotbar item (Tab/I bag, 1-8 hotbar, E interact).
 
 ### Phase 6 notes
 
@@ -152,7 +194,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
     godot --headless --path . res://tools/regression_check.tscn
 
-40 checks across every phase built so far; exits non-zero on failure. It exists because a
+51 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**
