@@ -34,6 +34,8 @@ const STAGES: Array = [[0.60, "high"], [0.30, "medium"], [0.10, "low"], [0.0, "e
 @export var flare_seconds := 0.45
 ## Colour of the cold coals left when the fire goes out.
 @export var ember_tint := Color(0.5, 0.31, 0.26, 0.8)
+## Fraction of the fire's light that still shows in full daylight.
+@export_range(0.0, 1.0) var day_light_floor := 0.18
 
 @onready var _flame: AnimatedSprite2D = $Flame
 @onready var _light: PointLight2D = $Light
@@ -146,7 +148,8 @@ func _update_visuals() -> void:
 		_flame.play(stage)
 	# Size and light both track fuel, so a dying fire visibly shrinks.
 	_flame.scale = Vector2.ONE * (lerpf(0.72, 1.05, ratio) * _flare)
-	_light.energy = lerpf(0.35, 1.25, ratio) * _flare
+	# Scale by darkness too, or the fire casts a spotlight at midday.
+	_light.energy = lerpf(0.35, 1.25, ratio) * _flare * lerpf(day_light_floor, 1.0, DayNight.darkness())
 	_light.texture_scale = lerpf(0.45, 1.0, ratio)
 
 
@@ -158,7 +161,7 @@ func _show_embers() -> void:
 		_flame.play("ember")
 	_flame.modulate = ember_tint
 	_flame.scale = Vector2.ONE * 0.5
-	_light.energy = 0.1
+	_light.energy = 0.1 * lerpf(day_light_floor, 1.0, DayNight.darkness())
 	_light.texture_scale = 0.25
 
 

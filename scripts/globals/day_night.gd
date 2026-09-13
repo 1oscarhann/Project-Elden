@@ -68,6 +68,20 @@ static func phase_at(t: float) -> Phase:
 	return Phase.NIGHT
 
 
+## 0 in full daylight, 1 at deepest night, ramping across dawn and dusk.
+## Lights scale their energy by this so they do not glare at midday.
+func darkness() -> float:
+	if time_of_day < DAWN_START:
+		return 1.0
+	if time_of_day < DAY_START:
+		return inverse_lerp(DAY_START, DAWN_START, time_of_day)
+	if time_of_day < DUSK_START:
+		return 0.0
+	if time_of_day < NIGHT_START:
+		return inverse_lerp(DUSK_START, NIGHT_START, time_of_day)
+	return 1.0
+
+
 ## 24-hour readout for the debug HUD.
 func clock_text() -> String:
 	var minutes := int(time_of_day * 24.0 * 60.0)

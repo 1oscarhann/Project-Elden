@@ -1,7 +1,8 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="script_player"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="script_camera"]
+[ext_resource type="Script" path="res://scripts/world/ambient_light.gd" id="script_light"]
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="frames_player"]
 [ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
 
@@ -46,6 +47,7 @@ position_smoothing_enabled = true
 position_smoothing_speed = 6.0
 
 [node name="Glow" type="PointLight2D" parent="."]
+script = ExtResource("script_light")
 position = Vector2(0, -10)
 color = Color(1, 0.91, 0.74, 1)
 energy = 0.5

@@ -132,18 +132,18 @@ https://craftpix.net
 
 ---
 
-## 7. Ground tileset — owner-supplied reference
+## 7. Ground tileset — Sprout Lands Basic pack (Cup Nooble)
 
-`docs/reference/tileset_reference_preview.webp` — the top-down grass/dirt/stone tileset chosen
-for the island ground.
+16x16, clean grid, slices losslessly. Only four sheets are used and committed:
+`Grass.png`, `Hills.png`, `Tilled_Dirt.png`, `Water.png` -> `assets/tiles/sprout_lands/`.
 
-**This file is a lossy marketing preview (1800x1200), not the source asset.** It was resampled
-non-integer, so it has no recoverable pixel grid and its tiles cannot be sliced cleanly at any
-scale. Only its palette was usable; `assets/tiles/island_terrain.png` is redrawn at 16px from
-those sampled colours by `tools/gen_terrain_tiles.py`.
+- Most cells are autotile blobs on transparency. **Solid interior tiles are in rows 5-6** of
+  `Grass.png` and `Tilled_Dirt.png`; `Hills.png` row 8 has the brown cliff earth.
+- `Water.png` is 64x16 = **four animation frames** of one tile, wired up as an animated tile.
+- The pack has **no dark grass** and **no second water tile**, so forest and deep water are
+  darkened copies (the licence allows modification).
+- Unused but available for later: grass/dirt/hill autotile blobs (Phase 8 terrain sets), fences,
+  doors, wooden house, chest, furniture, plants, chicken/cow sprites, and a colour palette.
 
-**To do this properly, drop the original PNG or zip into `raw_assets/`.** Also note for whoever
-does: the sheet's grass/dirt base tiles are flat single colours, it contains no ocean tile (only
-wave overlays), and no sand at all.
-
-**Licence/attribution for this pack is still unknown** — add it to `CREDITS.md` before shipping.
+**⚠️ Licence: non-commercial only, credit Cup Nooble required, no NFT/AI-training use, and the
+pack itself must not be redistributed.** Full terms in `CREDITS.md`.

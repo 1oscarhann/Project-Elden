@@ -13,12 +13,25 @@ Art assets by CraftPix.net (free licence — attribution required):
 
 https://craftpix.net
 
-## Ground tileset
-
-The island terrain palette is derived from a top-down grass/dirt/stone tileset supplied by the
-project owner (see `docs/reference/`). **Its pack name and licence are not yet recorded — this
-must be filled in before shipping.**
 
 ## Engine
 
 Built with [Godot Engine](https://godotengine.org) (MIT licence).
+
+## Ground tileset — Sprout Lands
+
+Assets — From: **Sprout Lands** — By: **Cup Nooble**
+<https://cupnooble.carrd.co>
+
+`assets/tiles/sprout_lands/` and the terrain atlas built from it are from the Sprout Lands
+Basic pack. Some of the assets in this project are made by Cup Nooble; the pack's licensing
+terms are reproduced here as that licence requires for open-source projects:
+
+- The assets may be modified. (Our terrain atlas darkens two rows; see `tools/build_terrain_atlas.gd`.)
+- **Usable in non-commercial projects only.** Anything to do with NFTs or AI training is not allowed.
+- The asset pack itself may not be redistributed or resold, even slightly modified. Redistributing
+  a project made with the assets — including open source — is allowed, with this note.
+- Credit is required: **Cup Nooble**.
+
+> ⚠️ **This makes the project non-commercial.** The CraftPix packs above permit commercial use;
+> Sprout Lands does not. Replace these tiles before ever selling anything.

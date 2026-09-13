@@ -14,7 +14,7 @@ const Terrain := IslandGenerator.Terrain
 ## Terrain rows at or above this are dry land; below it is water, which is the
 ## layer that carries collision.
 const FIRST_LAND: int = Terrain.SAND
-## Columns per terrain row in the atlas, picked at random to break up flat areas.
+## Columns per terrain row in the atlas: variants on land, animation frames on water.
 const VARIANTS := 4
 const SOURCE_ID := 0
 
@@ -83,10 +83,12 @@ func _paint(grid: Array) -> void:
 		var row: PackedByteArray = grid[y]
 		for x in generator.map_size.x:
 			var terrain := int(row[x])
-			var cell := Vector2i(x, y)
-			var atlas := Vector2i(_rng.randi_range(0, VARIANTS - 1), terrain)
-			var layer: TileMapLayer = ground_layer if terrain >= FIRST_LAND else water_layer
-			layer.set_cell(cell, SOURCE_ID, atlas)
+			var is_land := terrain >= FIRST_LAND
+			# Land rows hold four interchangeable variants; the water rows hold a
+			# single animated tile whose columns are frames, not variants.
+			var column := _rng.randi_range(0, VARIANTS - 1) if is_land else 0
+			var layer: TileMapLayer = ground_layer if is_land else water_layer
+			layer.set_cell(Vector2i(x, y), SOURCE_ID, Vector2i(column, terrain))
 
 
 func _scatter_trees(grid: Array, spawn: Vector2i, fire: Vector2i) -> void:
