@@ -1,8 +1,9 @@
 extends CanvasLayer
 
-## Debug HUD: day, clock, phase and warmth. Deliberately plain — real UI polish
-## is Phase 10. Lives on its own CanvasLayer so the world's day/night tint and
-## the cold overlay never wash out the text.
+## Debug HUD: day, clock, phase and warmth, plus the cold overlay.
+##
+## Items are NOT shown here — the hotbar and inventory panel own that. Lives on
+## its own CanvasLayer so the world's day/night tint never washes out the text.
 
 ## Overlay colour applied as the player gets cold.
 @export var cold_tint := Color(0.35, 0.55, 1.0)
@@ -11,7 +12,6 @@ extends CanvasLayer
 @onready var _clock: Label = $Readout/Clock
 @onready var _warmth_label: Label = $Readout/WarmthLabel
 @onready var _warmth_bar: ProgressBar = $Readout/Warmth
-@onready var _wood: Label = $Readout/Wood
 @onready var _overlay: ColorRect = $ColdOverlay
 
 
@@ -19,10 +19,8 @@ func _ready() -> void:
 	DayNight.ticked.connect(_on_ticked)
 	GameState.warmth_changed.connect(_on_warmth_changed)
 	GameState.cold_changed.connect(_on_cold_changed)
-	GameState.material_changed.connect(_on_material_changed)
 	_on_ticked(DayNight.time_of_day)
 	_on_warmth_changed(GameState.warmth)
-	_refresh_materials()
 
 
 func _on_ticked(_time_of_day: float) -> void:
@@ -37,20 +35,3 @@ func _on_warmth_changed(warmth: float) -> void:
 
 func _on_cold_changed(is_cold: bool) -> void:
 	_warmth_bar.modulate = Color(0.6, 0.8, 1.0) if is_cold else Color.WHITE
-
-
-func _on_material_changed(_item_id: String, _count: int) -> void:
-	_refresh_materials()
-
-
-## One line listing everything held. Ugly on purpose; Phase 6 gives it a real
-## inventory panel.
-func _refresh_materials() -> void:
-	var parts: PackedStringArray = []
-	var materials := GameState.all_materials()
-	var ids: Array = materials.keys()
-	ids.sort()
-	for id in ids:
-		if int(materials[id]) > 0:
-			parts.append("%s %d" % [String(id).capitalize(), materials[id]])
-	_wood.text = " · ".join(parts) if parts.size() > 0 else "nothing gathered"

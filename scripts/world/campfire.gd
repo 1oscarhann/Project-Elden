@@ -20,7 +20,9 @@ const STAGES: Array = [[0.60, "high"], [0.30, "medium"], [0.10, "low"], [0.0, "e
 ## 252s night, so one mid-night top-up is needed — about 5 logs a night. See
 ## CLAUDE.md for the arithmetic before changing this.
 @export var burn_rate := 0.5
-## Fuel gained per log added.
+## Item consumed to stoke the fire.
+@export var fuel_item := "wood"
+## Fallback fuel per log, used only if the item carries no "fuel" stat.
 @export var wood_value := 25.0
 @export var start_fuel := 40.0
 
@@ -61,7 +63,7 @@ func _ready() -> void:
 	$WarmthArea.body_exited.connect(_on_warmth_exited)
 	$Interact.body_entered.connect(_on_reach_entered)
 	$Interact.body_exited.connect(_on_reach_exited)
-	GameState.wood_changed.connect(_on_wood_changed)
+	Inventory.inventory_changed.connect(_on_inventory_changed)
 	_refresh()
 
 
@@ -98,14 +100,21 @@ func fuel_ratio() -> float:
 ## Spend one log from the stockpile to stoke the fire. Returns false when there
 ## is no wood or the fire is already full.
 func add_wood() -> bool:
-	if fuel >= max_fuel or not GameState.spend_wood(1):
+	if fuel >= max_fuel or not Inventory.remove_item(fuel_item, 1):
 		return false
 	var was_lit := is_lit()
-	set_fuel(fuel + wood_value)
+	set_fuel(fuel + fuel_per_log())
 	_flare_up()
 	if not was_lit:
 		_update_visuals()
 	return true
+
+
+## How much fuel one log is worth. Comes from the item's own "fuel" stat, so
+## a better firewood is a new .tres rather than a change here.
+func fuel_per_log() -> float:
+	var item := ItemDB.get_item(fuel_item)
+	return item.stat("fuel", wood_value) if item != null else wood_value
 
 
 func set_fuel(value: float) -> void:
@@ -184,7 +193,7 @@ func _flare_up() -> void:
 
 
 func _update_prompt() -> void:
-	var wood: int = GameState.wood
+	var wood: int = Inventory.count(fuel_item)
 	if fuel >= max_fuel:
 		_prompt.text = "Fire is roaring  (%d%%)" % roundi(fuel_ratio() * 100.0)
 	elif wood > 0:
@@ -218,6 +227,6 @@ func _on_reach_exited(body: Node2D) -> void:
 		_prompt.visible = false
 
 
-func _on_wood_changed(_count: int) -> void:
+func _on_inventory_changed() -> void:
 	if _player_in_reach:
 		_update_prompt()

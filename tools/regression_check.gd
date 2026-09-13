@@ -51,6 +51,7 @@ func _process(_delta: float) -> void:
 	_phase3()
 	_phase4()
 	_phase5()
+	_phase6()
 	print("\n%d checks, %s" % [checks, "ALL GREEN" if fails == 0 else "%d FAILURE(S)" % fails])
 	get_tree().quit(fails)
 
@@ -134,9 +135,10 @@ func _phase4() -> void:
 	ck(not GameState.is_warmed(), "a fire dying underfoot stops warming")
 	fire._player_in_warmth = false
 	fire._refresh()
-	GameState.set_wood(3)
+	Inventory.clear()
+	Inventory.add_item("wood", 3)
 	fire.set_fuel(10.0)
-	ck(fire.add_wood() and GameState.count_of("wood") == 2, "adding wood spends exactly one log")
+	ck(fire.add_wood() and Inventory.count("wood") == 2, "adding wood spends exactly one log")
 
 
 func _phase5() -> void:
@@ -150,15 +152,34 @@ func _phase5() -> void:
 	if tree_node == null:
 		return
 	var item: String = tree_node.data.drops[0].item_id
-	var before: int = GameState.count_of(item)
+	var before: int = Inventory.count(item)
 	for i in tree_node.data.hits_required - 1:
 		tree_node.hit()
 	ck(tree_node.is_ready(), "survives up to the last hit")
 	tree_node.hit()
 	ck(not tree_node.is_ready(), "the final hit harvests it")
-	ck(GameState.count_of(item) > before, "and it dropped %s" % item,
-		"+%d" % (GameState.count_of(item) - before))
+	ck(Inventory.count(item) > before, "and it dropped %s" % item,
+		"+%d" % (Inventory.count(item) - before))
 	ck(tree_node._body.collision_layer == 0, "harvested node stops blocking movement")
 	ck(not tree_node.hit(), "cannot re-chop a harvested node")
 	tree_node._set_stage(tree_node._stages.size() - 1)
 	ck(tree_node.is_ready() and tree_node._body.collision_layer == 1, "regrows and blocks again")
+
+
+func _phase6() -> void:
+	print("\n-- Phase 6: items and inventory --")
+	ck(ItemDB.count() > 0, "ItemDB loaded items from data", "%d items" % ItemDB.count())
+	ck(ItemDB.max_stack("nonsense") == 1, "an unknown id cannot make an infinite stack")
+	Inventory.clear()
+	ck(Inventory.add_item("wood", 120) == 0, "adding past a stack limit still fits")
+	ck(Inventory.count("wood") == 120, "total is right across stacks", str(Inventory.count("wood")))
+	ck(Inventory.slot(0)["count"] == ItemDB.max_stack("wood"), "first stack capped at max_stack")
+	ck(not Inventory.remove_item("wood", 999), "removal is all-or-nothing")
+	ck(Inventory.count("wood") == 120, "and a refused removal takes nothing")
+	ck(Inventory.remove_item("wood", 120) and Inventory.count("wood") == 0, "a valid removal clears it")
+	Inventory.clear()
+	for i in Inventory.SLOT_COUNT:
+		Inventory.add_item("fruit", ItemDB.max_stack("fruit"))
+	ck(Inventory.is_full() and Inventory.add_item("stone", 5) == 5,
+		"a full bag returns the whole amount as leftover")
+	Inventory.clear()

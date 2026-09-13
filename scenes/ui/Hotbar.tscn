@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hotbar.gd" id="script_hotbar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ItemSlot.tscn" id="scene_slot"]
+
+[node name="Hotbar" type="CanvasLayer"]
+layer = 2
+script = ExtResource("script_hotbar")
+slot_scene = ExtResource("scene_slot")
+
+[node name="Root" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Row" type="HBoxContainer" parent="Root"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -140.0
+offset_top = -40.0
+offset_right = 140.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 2

@@ -37,11 +37,6 @@ max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="Wood" type="Label" parent="Readout"]
-layout_mode = 2
-text = "Wood 8"
-autowrap_mode = 2
-
 [node name="Hint" type="Label" parent="Readout"]
 layout_mode = 2
-text = "WASD move · Shift run · E use"
+text = "WASD move · Shift run · E use · Tab bag"

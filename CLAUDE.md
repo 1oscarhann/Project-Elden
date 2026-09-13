@@ -106,14 +106,53 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 5 complete — this is the vertical-slice checkpoint. Play it before Phase 6.**
-Next up: `docs/phases/phase06_inventory.md`.
+**Phase 6 complete.** Next up: `docs/phases/phase07_crafting.md`.
+
+### Phase 6 notes
+
+- **Four autoloads now**, in this order: `DayNight`, `GameState`, **`ItemDB`**, **`Inventory`**.
+  ItemDB must precede Inventory — stack limits are looked up through it.
+- **`ItemData` is pure data.** Adding an item is a new `.tres` in `resources/items/` and nothing
+  else; `ItemDB` scans that folder at boot and everything else passes string ids around. It
+  strips `.remap` so exported builds still load, rejects blank/duplicate ids, and returns
+  `max_stack = 1` for an unknown id so a typo cannot create an infinite stack.
+- **`stats` is a free-form dictionary** on `ItemData`, so a new kind of item never needs a new
+  field. The campfire reads `wood`'s `"fuel"` stat instead of its own constant — better firewood
+  is a new `.tres`, not a code change.
+- **`Inventory` semantics, relied on by Phase 7:**
+  `add_item()` tops up existing stacks *before* opening a new slot and **returns the leftover**
+  that would not fit; `remove_item()` is **all-or-nothing** (a recipe can never half-consume its
+  ingredients) and drains the smallest stacks first so the bag tidies itself.
+  **The hotbar IS the first 8 inventory slots** — there is no second store to keep in sync.
+- **⚠️ The CraftPix icon sheets in `assets/icons/` are marketing previews, not game art.** They
+  are **3x nearest upscales** (verified: integer-scale error 0.016 at scale 3 vs 0.071/0.116
+  either side), sit on an **opaque brown background**, and have category labels ("fruits",
+  "vegetables"…) baked into the left margin. `tools/build_icon_atlas.gd` downscales to native
+  600x400, keys the background out, skips the label margin and re-centres each icon from its own
+  alpha bounds into `assets/icons/items_*.png` — a 10x10 grid of 32px transparent cells.
+  Item `.tres` files reference those with `AtlasTexture`. Cells in use:
+  | item | sheet | cell |
+  |------|-------|------|
+  | wood | `items_tools_ores` | (0,3) log |
+  | stone | `items_tools_ores` | (1,1) rock cluster |
+  | fibre | `items_food` | (8,3) wheat |
+  | fruit | `items_food` | (0,0) apple |
+  | berries | `items_food` | (2,1) berry cluster |
+  Only `icons_food` and `icons_tools_ores` are cleaned so far. **`icons_raw_meat_bones` has a
+  different layout** — no background gutters were detected, so it needs its own grid worked out
+  before Phase 9 uses it for animal drops.
+- **`GameState` no longer holds items at all.** The `_materials` placeholder, `wood`, and all the
+  add/spend helpers are gone; it is warmth and heat sources only. Phase 4 and 5 were retro-fitted.
+- **The bag does not pause the game** — stopping the world to look in a bag is the opposite of
+  cozy. Tab or I toggles it, Esc closes it, 1-8 select hotbar slots.
+- Hotbar and bag build their slots from `Inventory.HOTBAR_SIZE` / `SLOT_COUNT`, so resizing
+  either is a one-line constant change.
 
 ### Regression suite — run this after ANY change
 
     godot --headless --path . res://tools/regression_check.tscn
 
-31 checks across every phase built so far; exits non-zero on failure. It exists because a
+40 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**
@@ -162,9 +201,8 @@ HUD call blew up. **Do not skip it.**
 - **Density is ~520 nodes, roughly 1 per 7 land tiles.** The first pass at 824 was a wall of
   foliage with the player invisible inside it; with the variety in place 520 reads as woodland
   with real clearings rather than a wall.
-- **Materials:** `GameState` now holds a `_materials` dictionary behind
-  `add_material` / `spend_material` / `count_of` / `all_materials`, with `wood` kept as a
-  delegating alias so the campfire is untouched. Phase 6 replaces the lot with `Inventory`.
+- **Materials moved to `Inventory` in Phase 6.** Drops call `Inventory.add_item()`; the
+  placeholder dictionary that lived on `GameState` is gone.
 
 ### Phase 4 notes
 

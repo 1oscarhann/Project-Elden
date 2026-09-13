@@ -111,8 +111,11 @@ func _pick(variants: Array[Texture2D], fallback: Texture2D) -> Texture2D:
 
 func _award_drops() -> void:
 	for drop in data.drops:
-		if drop != null and drop.item_id != "":
-			GameState.add_material(drop.item_id, drop.roll(_rng))
+		if drop == null or drop.item_id.is_empty():
+			continue
+		# Anything that will not fit is simply lost. A cozy game should not
+		# refuse to let you chop a tree because your bag is full.
+		Inventory.add_item(drop.item_id, drop.roll(_rng))
 
 
 func _set_stage(value: int) -> void:
