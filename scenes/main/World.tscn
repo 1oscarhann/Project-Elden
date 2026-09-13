@@ -1,10 +1,11 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
 [ext_resource type="Script" path="res://scripts/world/island_generator.gd" id="script_gen"]
 [ext_resource type="TileSet" path="res://assets/tiles/island_terrain.tres" id="tileset"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
+[ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="campfire"]
 [ext_resource type="Texture2D" uid="uid://dfp3fov7n0ywc" path="res://assets/trees/Flower_tree1.png" id="tree_0"]
 [ext_resource type="Texture2D" uid="uid://dmofloci2vike" path="res://assets/trees/Fruit_tree1.png" id="tree_1"]
 [ext_resource type="Texture2D" uid="uid://bs73egudbffr2" path="res://assets/trees/Fruit_tree2.png" id="tree_2"]
@@ -37,6 +38,7 @@ rock_threshold = 0.68
 [node name="World" type="Node2D"]
 script = ExtResource("script_world")
 generator = SubResource("generator")
+campfire_scene = ExtResource("campfire")
 tree_textures = Array[Texture2D]([ExtResource("tree_0"), ExtResource("tree_1"), ExtResource("tree_2"), ExtResource("tree_3"), ExtResource("tree_4"), ExtResource("tree_5"), ExtResource("tree_6"), ExtResource("tree_7"), ExtResource("tree_8"), ExtResource("tree_9"), ExtResource("tree_10")])
 
 [node name="Water" type="TileMapLayer" parent="."]

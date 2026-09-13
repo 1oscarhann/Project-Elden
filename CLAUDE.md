@@ -106,7 +106,32 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 3 complete.** Next up: `docs/phases/phase04_campfire.md`.
+**Phase 4 complete.** Next up: `docs/phases/phase05_resources.md`.
+
+### Phase 4 notes
+
+- **`Campfire.tscn` / `campfire.gd` is fully self-contained and instanceable** — it never reaches
+  for the player or the world. Phase 8 can place them freely.
+- **The fire sheet is `fire_animation.png`, 4 cols x 6 rows of 44x48 cells** (NOT a 16px grid, and
+  rows 3-5 are *not* duplicates of 0-2 despite identical alpha bounds). Each column is a different
+  fire size, which `campfire_frames.tres` maps to fuel stages:
+  col 0 `ember`, col 1 `low`, col 3 `medium`, col 2 `high`. Sprite `offset = (0, -16)` puts the
+  log base on the origin for Y-sorting. **Only the fire is used from that pack.**
+- **Warmth wiring uses the Phase 3 hook untouched:** `_refresh()` is idempotent and recomputes
+  `player_in_radius AND is_lit`, so a fire *dying under a standing player* correctly stops warming
+  them. `_exit_tree` hands the heat source back so a freed fire cannot leak one.
+- **Balance (recompute if `day_length_seconds` changes):** a 600s day gives a **252s night** and a
+  48s dusk. `burn_rate = 0.5` makes a full 100-fuel fire last **200s**, so one mid-night top-up is
+  needed — about **5 logs a night** at `wood_value = 25`. The original 1.6 needed 16 logs a night,
+  which is a treadmill, not a cozy game. `night_drain` was softened 4.0 -> **2.5** (40s from warm
+  to cold away from a fire) now that there is somewhere to run to.
+- **`GameState.wood` is a placeholder** until Phase 6's `Inventory`. It is backed by `_wood` with a
+  setter so **even a direct assignment emits `wood_changed`** — without that the HUD silently
+  desynced from the real count (caught in a screenshot, not a test).
+- **A dead fire leaves faint cold coals** rather than vanishing. Spec allowed "embers optional";
+  without them the pit is invisible at night and unfindable, which breaks the loop.
+- **World-space `Label`s need an explicit small font.** At camera zoom 2 the default 16px font
+  renders at 32px and swamps the screen. The campfire prompt uses `font_size = 8` plus an outline.
 
 ### Phase 3 notes
 

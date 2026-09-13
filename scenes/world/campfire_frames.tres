@@ -1,0 +1,194 @@
+[gd_resource type="SpriteFrames" load_steps=26 format=3]
+
+[ext_resource type="Texture2D" uid="uid://txqesj6cihlf" path="res://assets/objects/fire_animation.png" id="fire_tex"]
+
+[sub_resource type="AtlasTexture" id="at_ember_0"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 0, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_ember_1"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 48, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_ember_2"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 96, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_ember_3"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 144, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_ember_4"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 192, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_ember_5"]
+atlas = ExtResource("fire_tex")
+region = Rect2(0, 240, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_0"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 0, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_1"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 48, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_2"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 96, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_3"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 144, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_4"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 192, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_low_5"]
+atlas = ExtResource("fire_tex")
+region = Rect2(44, 240, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_0"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 0, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_1"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 48, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_2"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 96, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_3"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 144, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_4"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 192, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_medium_5"]
+atlas = ExtResource("fire_tex")
+region = Rect2(132, 240, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_0"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 0, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_1"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 48, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_2"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 96, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_3"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 144, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_4"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 192, 44, 48)
+
+[sub_resource type="AtlasTexture" id="at_high_5"]
+atlas = ExtResource("fire_tex")
+region = Rect2(88, 240, 44, 48)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_ember_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_ember_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_ember_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_ember_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_ember_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_ember_5")
+}],
+"loop": true,
+"name": &"ember",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_low_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_low_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_low_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_low_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_low_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_low_5")
+}],
+"loop": true,
+"name": &"low",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_medium_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_medium_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_medium_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_medium_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_medium_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_medium_5")
+}],
+"loop": true,
+"name": &"medium",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_high_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_high_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_high_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_high_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_high_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_high_5")
+}],
+"loop": true,
+"name": &"high",
+"speed": 8.0
+}]

@@ -11,6 +11,7 @@ extends CanvasLayer
 @onready var _clock: Label = $Readout/Clock
 @onready var _warmth_label: Label = $Readout/WarmthLabel
 @onready var _warmth_bar: ProgressBar = $Readout/Warmth
+@onready var _wood: Label = $Readout/Wood
 @onready var _overlay: ColorRect = $ColdOverlay
 
 
@@ -18,8 +19,10 @@ func _ready() -> void:
 	DayNight.ticked.connect(_on_ticked)
 	GameState.warmth_changed.connect(_on_warmth_changed)
 	GameState.cold_changed.connect(_on_cold_changed)
+	GameState.wood_changed.connect(_on_wood_changed)
 	_on_ticked(DayNight.time_of_day)
 	_on_warmth_changed(GameState.warmth)
+	_on_wood_changed(GameState.wood)
 
 
 func _on_ticked(_time_of_day: float) -> void:
@@ -34,3 +37,7 @@ func _on_warmth_changed(warmth: float) -> void:
 
 func _on_cold_changed(is_cold: bool) -> void:
 	_warmth_bar.modulate = Color(0.6, 0.8, 1.0) if is_cold else Color.WHITE
+
+
+func _on_wood_changed(count: int) -> void:
+	_wood.text = "Wood  %d" % count

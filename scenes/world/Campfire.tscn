@@ -1,0 +1,78 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/campfire.gd" id="script_campfire"]
+[ext_resource type="SpriteFrames" path="res://scenes/world/campfire_frames.tres" id="frames_fire"]
+
+[sub_resource type="CircleShape2D" id="shape_warmth"]
+radius = 56.0
+
+[sub_resource type="CircleShape2D" id="shape_reach"]
+radius = 26.0
+
+[sub_resource type="Gradient" id="glow_falloff"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="glow_texture"]
+gradient = SubResource("glow_falloff")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="Campfire" type="Node2D"]
+script = ExtResource("script_campfire")
+
+[node name="Light" type="PointLight2D" parent="."]
+position = Vector2(0, -10)
+color = Color(1, 0.76, 0.42, 1)
+energy = 1.0
+texture = SubResource("glow_texture")
+texture_scale = 1.0
+
+[node name="Flame" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("frames_fire")
+animation = &"medium"
+autoplay = "medium"
+offset = Vector2(0, -16)
+
+[node name="Embers" type="CPUParticles2D" parent="."]
+position = Vector2(0, -14)
+emitting = false
+amount = 14
+lifetime = 0.9
+one_shot = true
+explosiveness = 0.85
+direction = Vector2(0, -1)
+spread = 32.0
+gravity = Vector2(0, -22)
+initial_velocity_min = 20.0
+initial_velocity_max = 46.0
+scale_amount_min = 1.0
+scale_amount_max = 2.0
+color = Color(1, 0.71, 0.32, 1)
+
+[node name="WarmthArea" type="Area2D" parent="."]
+monitoring = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WarmthArea"]
+shape = SubResource("shape_warmth")
+
+[node name="Interact" type="Area2D" parent="."]
+monitoring = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interact"]
+shape = SubResource("shape_reach")
+
+[node name="Prompt" type="Label" parent="."]
+visible = false
+offset_left = -64.0
+offset_top = -52.0
+offset_right = 64.0
+offset_bottom = -40.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.72)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 8
+text = "[E] add wood"
+horizontal_alignment = 1

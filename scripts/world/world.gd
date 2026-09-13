@@ -29,6 +29,9 @@ const SOURCE_ID := 0
 @onready var player: Node2D = $Props/Player
 
 @export_group("Scenery")
+## The one campfire the world seeds near spawn. Phase 8 makes fires placeable;
+## for now the night loop just needs somewhere to run to.
+@export var campfire_scene: PackedScene
 @export var tree_textures: Array[Texture2D] = []
 ## Chance a forest tile grows a tree.
 @export_range(0.0, 1.0) var forest_tree_chance := 0.12
@@ -61,7 +64,8 @@ func build() -> void:
 	var spawn := _find_spawn_tile(grid)
 	if player != null:
 		player.position = _tile_centre(spawn)
-	_scatter_trees(grid, spawn)
+	var fire_cell := _place_campfire(grid, spawn)
+	_scatter_trees(grid, spawn, fire_cell)
 
 	var bounds := Rect2(Vector2.ZERO, Vector2(generator.map_size * water_layer.tile_set.tile_size))
 	# Group calls rather than direct references, so the camera can live anywhere.
@@ -85,13 +89,13 @@ func _paint(grid: Array) -> void:
 			layer.set_cell(cell, SOURCE_ID, atlas)
 
 
-func _scatter_trees(grid: Array, spawn: Vector2i) -> void:
+func _scatter_trees(grid: Array, spawn: Vector2i, fire: Vector2i) -> void:
 	if tree_textures.is_empty():
 		return
-	# Keep the player's own footprint and headroom visible on load.
-	var centre := _tile_centre(spawn)
-	var clear_box := Rect2(centre - Vector2(spawn_clearing.x * 0.5, spawn_clearing.y),
-		Vector2(spawn_clearing.x, spawn_clearing.y + 8.0))
+	# Keep the player and the campfire both visible and reachable on load.
+	var clear_box := _clear_box(spawn)
+	if fire != spawn:
+		clear_box = clear_box.merge(_clear_box(fire))
 	for y in generator.map_size.y:
 		var row: PackedByteArray = grid[y]
 		for x in generator.map_size.x:
@@ -120,6 +124,28 @@ func _add_tree(cell: Vector2i, clear_box: Rect2) -> void:
 	sprite.offset = offset
 	sprite.position = pos
 	props_layer.add_child(sprite)
+
+
+## Footprint plus headroom around a tile that scenery must not cover.
+func _clear_box(cell: Vector2i) -> Rect2:
+	var centre := _tile_centre(cell)
+	return Rect2(centre - Vector2(spawn_clearing.x * 0.5, spawn_clearing.y),
+		Vector2(spawn_clearing.x, spawn_clearing.y + 8.0))
+
+
+## Seeds the single campfire a short walk from the spawn, on clear ground.
+func _place_campfire(grid: Array, spawn: Vector2i) -> Vector2i:
+	if campfire_scene == null:
+		return spawn
+	var cell := spawn
+	for offset in [Vector2i(3, -2), Vector2i(-3, -2), Vector2i(3, 2), Vector2i(-3, 2), Vector2i(0, -3)]:
+		if _is_clear(grid, spawn + offset):
+			cell = spawn + offset
+			break
+	var fire: Node2D = campfire_scene.instantiate()
+	fire.position = _tile_centre(cell)
+	props_layer.add_child(fire)
+	return cell
 
 
 ## World-space rect a centred Sprite2D would occupy.

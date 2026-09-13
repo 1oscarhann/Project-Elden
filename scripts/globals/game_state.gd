@@ -6,13 +6,16 @@ extends Node
 ## down and tints the screen, and that is all. There is no death in this game.
 
 signal warmth_changed(warmth: float)
+signal wood_changed(count: int)
 ## Fires only on the transition, so listeners don't have to diff it themselves.
 signal cold_changed(is_cold: bool)
 
 const MAX_WARMTH := 100.0
 
 @export_group("Warmth rates, per second")
-@export var night_drain := 4.0
+## At 2.5 a fully warm player takes 40s to go cold away from a fire — enough to
+## cross a stretch of island, not enough to ignore the fire.
+@export var night_drain := 2.5
 @export var dusk_drain := 1.5
 @export var day_regen := 8.0
 ## Regained while inside a heat source, at any time of day.
@@ -25,6 +28,17 @@ const MAX_WARMTH := 100.0
 @export_range(0.1, 1.0) var min_speed_factor := 0.6
 
 var warmth := MAX_WARMTH
+
+## Placeholder wood stockpile until Phase 6 replaces it with the Inventory
+## autoload. Kept behind add/spend so the call sites do not change when it goes.
+## Backed by a private field and a setter so that even a direct assignment
+## emits — otherwise the HUD silently desyncs from the real count.
+var _wood := 8
+var wood: int:
+	get:
+		return _wood
+	set(value):
+		set_wood(value)
 
 ## How many heat sources currently contain the player. Phase 4's campfire just
 ## calls add/remove on its area signals, so none of the warmth maths below ever
@@ -93,6 +107,27 @@ func chill() -> float:
 	if not is_cold() or cold_threshold <= 0.0:
 		return 0.0
 	return 1.0 - warmth / cold_threshold
+
+
+func set_wood(value: int) -> void:
+	var clamped := maxi(0, value)
+	if clamped == _wood:
+		return
+	_wood = clamped
+	wood_changed.emit(_wood)
+
+
+func add_wood(count: int = 1) -> void:
+	if count > 0:
+		set_wood(_wood + count)
+
+
+## Take wood from the stockpile. Returns false and changes nothing if short.
+func spend_wood(count: int = 1) -> bool:
+	if count <= 0 or _wood < count:
+		return false
+	set_wood(_wood - count)
+	return true
 
 
 ## Called by heat sources as the player enters and leaves their radius.
