@@ -1,0 +1,60 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/entities/animal.gd" id="script_animal"]
+[ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
+
+[sub_resource type="RectangleShape2D" id="shape_feet"]
+size = Vector2(12, 6)
+
+[sub_resource type="CircleShape2D" id="shape_detect"]
+radius = 72.0
+
+[sub_resource type="CircleShape2D" id="shape_reach"]
+radius = 20.0
+
+[node name="Animal" type="CharacterBody2D"]
+motion_mode = 1
+script = ExtResource("script_animal")
+
+[node name="Shadow" type="Sprite2D" parent="."]
+modulate = Color(1, 1, 1, 0.4)
+texture = ExtResource("tex_shadow")
+offset = Vector2(0, -3)
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+offset = Vector2(0, -11)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -2)
+shape = SubResource("shape_feet")
+
+[node name="Agent" type="NavigationAgent2D" parent="."]
+path_desired_distance = 6.0
+target_desired_distance = 8.0
+avoidance_enabled = false
+
+[node name="Detector" type="Area2D" parent="."]
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Detector"]
+shape = SubResource("shape_detect")
+
+[node name="Reach" type="Area2D" parent="."]
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Reach"]
+shape = SubResource("shape_reach")
+
+[node name="Puff" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 7
+lifetime = 0.45
+one_shot = true
+explosiveness = 0.9
+position = Vector2(0, -6)
+spread = 180.0
+gravity = Vector2(0, -14)
+initial_velocity_min = 14.0
+initial_velocity_max = 34.0
+scale_amount_min = 1.5
+scale_amount_max = 2.5

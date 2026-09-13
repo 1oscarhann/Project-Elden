@@ -26,6 +26,7 @@ const SOURCE_ID := 0
 @onready var water_layer: TileMapLayer = $Water
 @onready var ground_layer: TileMapLayer = $Ground
 @onready var props_layer: Node2D = $Props
+@onready var _animals: AnimalSpawner = $Animals
 
 @export_group("Scenery")
 ## Every kind of harvestable that may appear. Each carries its own terrains and
@@ -66,6 +67,10 @@ func build() -> void:
 	_spawn_cell = _find_spawn_tile(grid)
 	var fire_cell := _place_campfire(grid, _spawn_cell)
 	_scatter_harvestables(grid, _spawn_cell, fire_cell)
+	# Wildlife last: the spawner needs the finished terrain grid, and it places
+	# into props_layer so animals Y-sort against the trees they walk behind.
+	if _animals != null:
+		_animals.populate(self, grid)
 
 	# Stored rather than pushed at the camera here: this runs before the player
 	# exists, so the room manager applies it when it activates this room.

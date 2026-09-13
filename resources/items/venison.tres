@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://dxi1spovtbruj" path="res://assets/icons/items_raw_meat_bones.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(216, 72, 36, 36)
+
+[resource]
+script = ExtResource("script_item")
+id = "venison"
+display_name = "Venison"
+icon = SubResource("icon")
+max_stack = 20
+category = 1
+description = "A heavy haunch. Cooks into something worth the walk."
+stats = {}

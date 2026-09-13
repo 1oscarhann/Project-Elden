@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
@@ -13,6 +13,11 @@
 [ext_resource type="Resource" path="res://resources/harvestables/tree_leafy.tres" id="harv_5"]
 [ext_resource type="Resource" path="res://resources/harvestables/tree_palm.tres" id="harv_6"]
 [ext_resource type="PackedScene" path="res://scenes/world/Harvestable.tscn" id="harvestable_scene"]
+[ext_resource type="Script" path="res://scripts/world/animal_spawner.gd" id="script_animals"]
+[ext_resource type="PackedScene" path="res://scenes/entities/Animal.tscn" id="animal_scene"]
+[ext_resource type="Resource" path="res://resources/animals/hare.tres" id="anim_0"]
+[ext_resource type="Resource" path="res://resources/animals/deer.tres" id="anim_1"]
+[ext_resource type="Resource" path="res://resources/animals/grouse.tres" id="anim_2"]
 
 [sub_resource type="Gradient" id="sky_gradient"]
 offsets = PackedFloat32Array(0, 0.2, 0.27, 0.34, 0.7, 0.77, 0.86, 1)
@@ -46,6 +51,11 @@ tile_set = ExtResource("tileset")
 
 [node name="Props" type="Node2D" parent="."]
 y_sort_enabled = true
+
+[node name="Animals" type="Node2D" parent="."]
+script = ExtResource("script_animals")
+animal_scene = ExtResource("animal_scene")
+animals = Array[AnimalData]([ExtResource("anim_0"), ExtResource("anim_1"), ExtResource("anim_2")])
 
 [node name="SkyTint" type="CanvasModulate" parent="."]
 script = ExtResource("script_sky")

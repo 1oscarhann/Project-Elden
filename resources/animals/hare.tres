@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="AnimalData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/entities/animal_data.gd" id="script_animal"]
+[ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
+[ext_resource type="SpriteFrames" path="res://scenes/entities/hare_frames.tres" id="frames"]
+
+[sub_resource type="Resource" id="drop_meat"]
+script = ExtResource("script_drop")
+item_id = "raw_meat"
+min_count = 1
+max_count = 2
+chance = 1.0
+
+[sub_resource type="Resource" id="drop_bone"]
+script = ExtResource("script_drop")
+item_id = "bone"
+min_count = 1
+max_count = 1
+chance = 0.6
+
+[resource]
+script = ExtResource("script_animal")
+id = "hare"
+display_name = "Hare"
+sprite_frames = ExtResource("frames")
+sprite_offset = Vector2(0, -11)
+shadow_scale = Vector2(0.45, 0.45)
+move_speed = 26.0
+flee_speed = 92.0
+detection_radius = 70.0
+wander_range = 88.0
+rest_min = 1.0
+rest_max = 3.5
+flee_memory = 2.2
+hits_required = 1
+drops = Array[HarvestDrop]([SubResource("drop_meat"), SubResource("drop_bone")])
+puff_colour = Color(0.82, 0.72, 0.6, 1)
+spawn_terrains = Array[int]([2, 3, 4])
+population = 12

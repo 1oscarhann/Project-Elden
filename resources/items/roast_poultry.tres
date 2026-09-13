@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://cjjw1fg4dug6b" path="res://assets/icons/items_food.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(256, 288, 32, 32)
+
+[resource]
+script = ExtResource("script_item")
+id = "roast_poultry"
+display_name = "Roast Grouse"
+icon = SubResource("icon")
+max_stack = 10
+category = 1
+description = "Crisp skin, hot through."
+stats = {"hunger": 28.0, "warmth": 10.0}

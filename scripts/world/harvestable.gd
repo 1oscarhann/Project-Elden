@@ -113,9 +113,12 @@ func _award_drops() -> void:
 	for drop in data.drops:
 		if drop == null or drop.item_id.is_empty():
 			continue
+		var count := drop.roll(_rng)
+		if count <= 0:
+			continue  # An entry whose chance did not come up.
 		# Anything that will not fit is simply lost. A cozy game should not
 		# refuse to let you chop a tree because your bag is full.
-		Inventory.add_item(drop.item_id, drop.roll(_rng))
+		Inventory.add_item(drop.item_id, count)
 
 
 func _set_stage(value: int) -> void:

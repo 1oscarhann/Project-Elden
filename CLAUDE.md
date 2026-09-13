@@ -106,7 +106,73 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 8 complete.** Next up: `docs/phases/phase09_animals.md`.
+**Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
+
+### Phase 9 notes
+
+- **Animal sheets are 32x32 cells, 4 rows, columns = frames** — verified on every sheet.
+  **⚠️ The ROW ORDER IS NOT THE SAME FOR EVERY ANIMAL.** Hare and deer are
+  `down, up, left, right`; the **black grouse has its two side rows swapped**
+  (`down, up, right, left`). Found by locating the eye pixel inside each side row's alpha
+  bounds, not by assuming. Row order is therefore a field per animal in
+  `tools/build_animal_frames.gd`, never a constant. (Note this is also *not* the player's order,
+  which is `down, left, right, up`.)
+- **Feet offsets, measured across every frame of every sheet:** hare **-11**, deer **-11**,
+  grouse **-9**. Taken from the idle/walk frames only — the death frames sprawl 1-2px lower, and
+  anchoring to those floats the animal off the ground while it is standing.
+- **`tools/build_animal_frames.gd`** generates all three `SpriteFrames` (60 animations, 312 atlas
+  regions) and asserts each one round-trips through `ResourceSaver`. Regenerate rather than
+  hand-edit, exactly like the player's frames.
+- **Navigation is on the TILESET, not a hand-placed region.** `tools/build_tileset.gd` now adds a
+  navigation layer and gives every **land** tile a full-cell nav polygon; `TileMapLayer` bakes
+  those into navigation regions itself. Because water has none, **an animal's NavigationAgent2D
+  physically cannot path into the sea** — which is the shoreline wall-hugging the spec asks us to
+  avoid. Note `make_polygons_from_outlines()` is deprecated in 4.7: set `vertices` and
+  `add_polygon()` directly.
+- **`AnimalData` is the whole personality.** Speeds, detection radius, wander range, rest times,
+  hits, drops, spawn terrains and population are all data, so adding a species is a `.tres` plus a
+  SpriteFrames. `animal.gd` never learns what a hare is.
+- **`HarvestDrop` is now shared by harvestables AND animals** rather than growing a near-identical
+  `AnimalDrop`. It gained **`chance`** (default 1.0, so every pre-Phase-9 `.tres` behaves exactly
+  as before) — that is what makes a deer's antlers uncommon. Both callers skip a roll of 0.
+- **State machine: REST → WANDER → FLEE.** There is deliberately **no HURT state** — being hit
+  also startles, so a HURT state was stomped by the movement animation the very next frame. It is
+  a 0.25s timer that suppresses `_animate()` instead. Wandering is around **where the animal
+  spawned**, not where it is now, so a long chase does not leave it homeless.
+- **No aggression anywhere** (spec, and CLAUDE.md rule 6). Boar and fox are in the pack and
+  deliberately unused — the boar has an attack animation and that is a conversation, not a
+  default. The regression asserts `Animal` has no `attack` method.
+- **Hunting reuses the harvest input and the group-call swing** — E in reach, `call_group("player",
+  "swing", ...)`, so animals hold no player reference either. A carcass drops its loot, stops
+  colliding immediately, lingers 0.9s, then fades and frees itself.
+- **The spawner tops up slowly** (`respawn_seconds` 24) and only **out of sight of the player**
+  (`respawn_clearance` 200px), so nothing pops into existence in front of you. Caps are per
+  species: hare 12, deer 8, grouse 10 = **30 across the island**. With a 320x180 viewport over
+  ~1.1M px² of land that is roughly **1-2 animals on screen at a time** — wildlife, not a petting
+  zoo. A carcass stops counting toward the cap the moment it dies, not when the node frees.
+- **New branch of the tree, all data:** `venison` · `antler` · `raw_poultry` drop from the
+  animals; **campfire:** `venison -> roast_venison`, `raw_poultry -> roast_poultry`;
+  **workbench:** `antler + plank x2 + rope -> hunting_knife`. Cooked dishes carry `hunger` like
+  `cooked_meat` **plus** a little `warmth`, which is the stat that actually exists today.
+  New icon cells: `venison` meat (6,2) · `antler` meat (6,5) · `raw_poultry` meat (3,1) ·
+  `roast_venison` food (1,5) · `roast_poultry` food (8,9) · `hunting_knife` tools (0,2).
+  **Note the two icon atlases have different cell sizes:** `items_raw_meat_bones` is **36px, 8x6**;
+  `items_food` / `items_tools_ores` are **32px, 10x10**.
+- **⚠️ Two Godot gotchas found the hard way:**
+  1. **Headless runs `_process` uncapped, so counting frames is not counting time.** 60 frames
+     measured a few milliseconds and every timed check failed for no reason. All of Phase 9's
+     regression waits are in **seconds**, accumulated from `delta`.
+  2. **A freed Node leaves a GDScript variable `null`, not merely invalid.** A check written as
+     `not is_instance_valid(x)` never ran because an earlier `x == null` guard caught it first.
+- **Regression suite is 118 checks** and now has a **multi-frame tail**: Phase 9's behaviour
+  (wandering, fleeing, hunting, respawn) only exists over time, so it runs as a short script of
+  steps from `_process` after the single-frame phases. Bump `EXPECTED_CHECKS` when adding checks.
+- **`tools/phase9_shots.gd`** is the visual walkthrough. It re-aims the camera **immediately
+  before each capture** — a wandering animal drifts out of frame during a wait — and refuses to
+  park the player on water, since teleporting ignores collision and a shot of the player stood in
+  the sea looks broken even though it is unreachable in play.
+- **⚠️ Still swinging a sword at the wildlife.** Same placeholder flagged in Phase 5; it reads
+  even worse now that it is pointed at a deer. One SpriteFrames swap when axe art turns up.
 
 ### Phase 8 notes
 
@@ -164,7 +230,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 - **Shelter reuses the campfire's counted heat hook** — `Interior.on_entered()` calls
   `GameState.add_heat_source()`. The warmth system still has no idea what a building is.
 - **New keys:** **B** toggles build mode, **left-click / E** places, Esc cancels.
-- **Regression suite is now 78 checks** and guards against its own truncation: a runtime error
+- **Regression suite was 78 checks at this phase** and guards against its own truncation: a runtime error
   used to abort a phase and still print "ALL GREEN", so `EXPECTED_CHECKS` is asserted at the end.
   Bump it when you add checks.
 - **`tools/phase8_shots.gd`** is a repeatable visual walkthrough — it drives build mode through
@@ -261,7 +327,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
     godot --headless --path . res://tools/regression_check.tscn
 
-78 checks across every phase built so far; exits non-zero on failure. It exists because a
+118 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

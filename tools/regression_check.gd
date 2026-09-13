@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 78
+const EXPECTED_CHECKS := 118
 
 var f := 0
 var fails := 0
@@ -23,6 +23,15 @@ var props: Node2D
 var player: CharacterBody2D
 var fire: Campfire
 var tree_node: Harvestable
+var spawner: AnimalSpawner
+## Phase 9 is the one phase that cannot be judged in a single frame: fleeing and
+## pathing only exist over time. It runs as a short script of steps instead.
+var step := 0
+## Seconds, NOT frames: headless runs _process uncapped, so counting frames
+## measured a few milliseconds and every timed check failed for no reason.
+var wait := 0.0
+var quarry: Animal
+var quarry_start := Vector2.ZERO
 
 
 func ck(ok: bool, what: String, detail: String = "") -> void:
@@ -36,11 +45,12 @@ func _ready() -> void:
 	add_child((load("res://scenes/main/Main.tscn") as PackedScene).instantiate())
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	f += 1
+	if f > 2:
+		_phase9_step(delta)
+		return
 	if f != 2:
-		if f > 2:
-			get_tree().quit(fails)
 		return
 	DayNight.paused = true
 	rooms = get_node("Main/Rooms")
@@ -62,6 +72,11 @@ func _process(_delta: float) -> void:
 	_phase6()
 	_phase7()
 	_phase8()
+	_phase9()
+	print("\n-- Phase 9b: wildlife over time --")
+
+
+func _finish() -> void:
 	ck(checks >= EXPECTED_CHECKS - 1, "the whole suite ran — no phase aborted early",
 		"%d of %d" % [checks + 1, EXPECTED_CHECKS])
 	print("\n%d checks, %s" % [checks, "ALL GREEN" if fails == 0 else "%d FAILURE(S)" % fails])
@@ -340,3 +355,220 @@ func _phase8() -> void:
 	ck(GameState.heat_source_count() == heat_before, "and leaving hands it back")
 	inside.queue_free()
 	hut.queue_free()
+
+
+func _phase9() -> void:
+	print("\n-- Phase 9: animals --")
+	spawner = world.get_node_or_null("Animals")
+	ck(spawner != null, "the world carries an animal spawner")
+	if spawner == null:
+		return
+	ck(spawner.animals.size() >= 2, "more than one species is configured",
+		"%d species" % spawner.animals.size())
+
+	# Data-driven: every species must be complete without code knowing its name.
+	var incomplete: Array = []
+	var wanted := ["idle", "walk", "run", "hurt", "death"]
+	for data in spawner.animals:
+		if data == null or data.sprite_frames == null:
+			incomplete.append("null")
+			continue
+		for state in wanted:
+			for dir in ["down", "left", "right", "up"]:
+				if not data.sprite_frames.has_animation("%s_%s" % [state, dir]):
+					incomplete.append("%s:%s_%s" % [data.id, state, dir])
+	ck(incomplete.is_empty(), "every species has all 20 animations", str(incomplete))
+	var unlooped: Array = []
+	for data in spawner.animals:
+		if data != null and data.sprite_frames.get_animation_loop("death_down"):
+			unlooped.append(data.id)
+	ck(unlooped.is_empty(), "death does not loop", str(unlooped))
+	var slow: Array = []
+	for data in spawner.animals:
+		if data != null and data.flee_speed <= data.move_speed:
+			slow.append(data.id)
+	ck(slow.is_empty(), "fleeing is faster than ambling", str(slow))
+
+	# Cozy rule: nothing here may damage the player.
+	ck(not (Animal as Object).has_method("attack"), "animals have no attack")
+
+	# Population filled to the caps, and in the y-sorted layer.
+	var total := 0
+	var capped := true
+	for data in spawner.animals:
+		if data == null:
+			continue
+		var live: int = spawner.count_of(data)
+		total += live
+		if live != data.population:
+			capped = false
+			print("       %s: %d of %d" % [data.id, live, data.population])
+	ck(capped, "every species spawned to its cap", "%d animals" % total)
+	var strays := 0
+	for child in props.get_children():
+		if child is Animal:
+			strays += 1
+	ck(strays == total, "animals live in the y-sorted props layer", "%d of %d" % [strays, total])
+
+	# Spawn terrain is honoured, so where a species lives is data.
+	var wrong: Array = []
+	for child in props.get_children():
+		if not (child is Animal):
+			continue
+		var a := child as Animal
+		var cell: Vector2i = world.world_to_cell(a.global_position)
+		if world.ground_layer.get_cell_source_id(cell) == -1:
+			wrong.append("%s in the sea" % a.data.id)
+		elif not a.data.spawn_terrains.has(world.ground_layer.get_cell_atlas_coords(cell).y):
+			wrong.append("%s on terrain %d" % [a.data.id, world.ground_layer.get_cell_atlas_coords(cell).y])
+	ck(wrong.is_empty(), "every animal stands on terrain its data allows", str(wrong.slice(0, 3)))
+
+	# Navigation: the island's own tiles carry the mesh, the sea does not.
+	var ts: TileSet = world.ground_layer.tile_set
+	ck(ts.get_navigation_layers_count() > 0, "the tileset has a navigation layer")
+	var src: TileSetAtlasSource = ts.get_source(0)
+	var land_nav: int = 0
+	var sea_nav: int = 0
+	for row in 5:
+		var coord := Vector2i(0, row)
+		if not src.has_tile(coord):
+			continue
+		var poly: NavigationPolygon = src.get_tile_data(coord, 0).get_navigation_polygon(0)
+		var has: bool = poly != null and poly.get_polygon_count() > 0
+		if not has:
+			continue
+		if row < 2:
+			sea_nav += 1
+		else:
+			land_nav += 1
+	ck(land_nav == 3, "all three land rows are navigable", str(land_nav))
+	ck(sea_nav == 0, "and the sea is not — an animal cannot path into it", str(sea_nav))
+	ck(world.ground_layer.navigation_enabled, "the ground layer bakes that mesh")
+
+	# Drops are data, and rolling one respects its chance.
+	var dropless: Array = []
+	for data in spawner.animals:
+		if data != null and data.drops.is_empty():
+			dropless.append(data.id)
+	ck(dropless.is_empty(), "every species drops something", str(dropless))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var never := HarvestDrop.new()
+	never.item_id = "bone"
+	never.chance = 0.0
+	var always := HarvestDrop.new()
+	always.item_id = "bone"
+	always.min_count = 2
+	always.max_count = 2
+	ck(never.roll(rng) == 0, "a zero-chance drop yields nothing")
+	ck(always.roll(rng) == 2, "and a certain one always yields")
+
+	# The new branch of the tree hangs off the animals.
+	for id in ["roast_venison", "roast_poultry", "hunting_knife"]:
+		ck(Crafting.get_recipe(id) != null, "recipe %s exists" % id)
+	for id in ["venison", "antler", "raw_poultry", "roast_venison", "roast_poultry", "hunting_knife"]:
+		ck(ItemDB.get_item(id) != null, "item %s exists" % id)
+
+	# Pick something to chase, and stand the player far away so the wildlife
+	# is calm before the flee test starts.
+	for child in props.get_children():
+		if child is Animal and quarry == null:
+			quarry = child
+	player.global_position = quarry.global_position + Vector2(600, 0)
+
+
+## Frames 3+. Fleeing and pathing only exist over time, so Phase 9's behaviour
+## runs as a short script rather than a single-frame assertion.
+func _phase9_step(delta: float) -> void:
+	if wait > 0.0:
+		wait -= delta
+		return
+	# A freed Node leaves this variable *null*, not merely invalid, so both have
+	# to count as gone. Steps 0-6 need a live quarry; step 7 asserts it is gone,
+	# so the guard must stop before then or it ends the run instead of checking.
+	var gone: bool = quarry == null or not is_instance_valid(quarry)
+	if step < 7 and gone:
+		ck(false, "the quarry vanished before the run got to step %d" % step)
+		_finish()
+		return
+	match step:
+		0:
+			wait = 2.0  # Let it settle and take a wander hop or two.
+		1:
+			ck(quarry.get_node("Agent").get_navigation_map().is_valid(),
+				"the agent found a navigation map")
+			quarry_start = quarry.global_position
+			# Comfortably longer than the longest rest any species takes.
+			wait = 9.0
+		2:
+			ck(quarry.global_position.distance_to(quarry_start) > 1.0,
+				"a calm animal wanders on its own",
+				"moved %.1fpx" % quarry.global_position.distance_to(quarry_start))
+			# Walk up on it.
+			quarry_start = quarry.global_position
+			player.global_position = quarry.global_position + Vector2(24, 0)
+			wait = 0.5
+		3:
+			ck(quarry._state == Animal.State.FLEE, "it flees when the player closes in",
+				"state %d" % quarry._state)
+			wait = 1.0
+		4:
+			var gap: float = quarry.global_position.distance_to(player.global_position)
+			ck(gap > 24.0, "and puts distance between them", "%.1fpx away" % gap)
+			var cell: Vector2i = world.world_to_cell(quarry.global_position)
+			ck(world.ground_layer.get_cell_source_id(cell) != -1,
+				"fleeing never takes it into the sea", str(cell))
+			wait = 0.1
+		5:
+			# Hunt it: swing until it drops.
+			Inventory.clear()
+			var before: int = spawner.count_of(quarry.data)
+			var swings := 0
+			while quarry.is_alive() and swings < 12:
+				quarry.hit()
+				swings += 1
+			ck(not quarry.is_alive(), "it can be hunted", "%d swings" % swings)
+			ck(swings == quarry.data.hits_required, "taking exactly hits_required swings",
+				"%d vs %d" % [swings, quarry.data.hits_required])
+			var got: Dictionary = Inventory.totals()
+			ck(not got.is_empty(), "drops land in the inventory", str(got))
+			var expected: Array = []
+			for drop in quarry.data.drops:
+				expected.append(drop.item_id)
+			var unexpected: Array = got.keys().filter(func(k): return not expected.has(k))
+			ck(unexpected.is_empty(), "and only what its data lists", str(unexpected))
+			ck(spawner.count_of(quarry.data) == before - 1,
+				"a carcass stops counting toward the population cap")
+			wait = 0.1
+		6:
+			ck(quarry.collision_layer == 0, "a carcass stops blocking the player")
+			ck(not quarry.hit(), "and cannot be hunted twice")
+			# It fades and frees itself; the spawner must not be holding it.
+			wait = 3.0
+		7:
+			ck(gone, "the carcass clears itself away")
+			# Respawn: the spawner tops the island back up on its own. Sped up
+			# here, since the shipped interval is deliberately a slow trickle.
+			spawner.respawn_seconds = 0.4
+			spawner.respawn_clearance = 0.0
+			wait = 2.0
+		8:
+			var refilled := true
+			for data in spawner.animals:
+				if data != null and spawner.count_of(data) != data.population:
+					refilled = false
+					print("       %s: %d of %d" % [data.id, spawner.count_of(data), data.population])
+			ck(refilled, "the population refills itself over time",
+				"%d animals" % spawner.total_alive())
+			# And stops at the cap rather than filling the island forever.
+			wait = 2.0
+		9:
+			var over: Array = []
+			for data in spawner.animals:
+				if data != null and spawner.count_of(data) > data.population:
+					over.append("%s %d>%d" % [data.id, spawner.count_of(data), data.population])
+			ck(over.is_empty(), "and never overshoots the cap", str(over))
+			Inventory.clear()
+			_finish()
+			return
+	step += 1

@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="AnimalData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/entities/animal_data.gd" id="script_animal"]
+[ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
+[ext_resource type="SpriteFrames" path="res://scenes/entities/grouse_frames.tres" id="frames"]
+
+[sub_resource type="Resource" id="drop_poultry"]
+script = ExtResource("script_drop")
+item_id = "raw_poultry"
+min_count = 1
+max_count = 2
+chance = 1.0
+
+[sub_resource type="Resource" id="drop_bone"]
+script = ExtResource("script_drop")
+item_id = "bone"
+min_count = 1
+max_count = 1
+chance = 0.35
+
+[resource]
+script = ExtResource("script_animal")
+id = "grouse"
+display_name = "Black Grouse"
+sprite_frames = ExtResource("frames")
+sprite_offset = Vector2(0, -9)
+shadow_scale = Vector2(0.5, 0.4)
+move_speed = 18.0
+flee_speed = 96.0
+detection_radius = 60.0
+wander_range = 64.0
+rest_min = 0.8
+rest_max = 3.0
+flee_memory = 1.8
+hits_required = 1
+drops = Array[HarvestDrop]([SubResource("drop_poultry"), SubResource("drop_bone")])
+puff_colour = Color(0.35, 0.32, 0.36, 1)
+spawn_terrains = Array[int]([2, 3, 4])
+population = 10

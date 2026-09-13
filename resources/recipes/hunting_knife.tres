@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/recipe_data.gd" id="script_recipe"]
+[ext_resource type="Script" path="res://scripts/world/recipe_ingredient.gd" id="script_ingredient"]
+
+[sub_resource type="Resource" id="ing_antler"]
+script = ExtResource("script_ingredient")
+item_id = "antler"
+count = 1
+
+[sub_resource type="Resource" id="ing_plank"]
+script = ExtResource("script_ingredient")
+item_id = "plank"
+count = 2
+
+[sub_resource type="Resource" id="ing_rope"]
+script = ExtResource("script_ingredient")
+item_id = "rope"
+count = 1
+
+[resource]
+script = ExtResource("script_recipe")
+id = "hunting_knife"
+result_item_id = "hunting_knife"
+result_count = 1
+ingredients = Array[RecipeIngredient]([SubResource("ing_antler"), SubResource("ing_plank"), SubResource("ing_rope")])
+required_station = "workbench"
+unlocked_by_default = true
+category = "tools"
