@@ -156,8 +156,10 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 - **Interiors are painted, not hand-authored.** `room_size` (default **14x10**) is an export;
   `interior.gd` paints the wall ring, leaves a gap at the bottom-centre door cell, and derives
   `$Entry` and `$ExitDoor` from it — so resizing a room cannot leave the door in a wall.
-  A 14x10 room behind a 3x3 hut is the "bigger on the inside" conceit; **24x16 was tried and reads
-  as a barn, not a home.** A `Backdrop` ColorRect sized in code covers the gap around a room
+  A 10x7 room (8x5 of walkable floor) behind a 3x3 hut is the "bigger on the inside" conceit.
+  **Sizing was tuned by eye, not guessed: 24x16 and then 14x10 both read as a hall — owner's call,
+  twice. Err small.** The trick is that it only has to beat the footprint outside, not fill the
+  screen. A `Backdrop` ColorRect sized in code covers the gap around a room
   smaller than the viewport, which otherwise showed the engine's clear colour.
 - **Shelter reuses the campfire's counted heat hook** — `Interior.on_entered()` calls
   `GameState.add_heat_source()`. The warmth system still has no idea what a building is.

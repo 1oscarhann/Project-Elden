@@ -148,7 +148,7 @@ func _process(_delta: float) -> void:
 				" heat=", GameState.heat_source_count())
 			shot("04_interior")
 			# And a look at the room proper, a few tiles in.
-			player.global_position += Vector2(0, -56)
+			player.global_position += Vector2(0, -32)
 			wait = 20
 		12:
 			shot("05_interior_room")

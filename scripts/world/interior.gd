@@ -14,7 +14,7 @@ extends Room
 @export_group("Room")
 ## Interior size in tiles, INCLUDING the wall ring. Deliberately far bigger
 ## than the building's footprint outside — that is the whole conceit.
-@export var room_size := Vector2i(14, 10)
+@export var room_size := Vector2i(10, 7)
 ## Atlas cells in assets/tiles/interior_tileset.tres.
 @export var floor_tile := Vector2i(1, 1)
 @export var wall_tile := Vector2i(1, 0)

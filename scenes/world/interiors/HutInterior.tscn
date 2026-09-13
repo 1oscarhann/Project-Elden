@@ -26,7 +26,7 @@ size = Vector2(14, 10)
 
 [node name="HutInterior" type="Node2D"]
 script = ExtResource("script_interior")
-room_size = Vector2i(14, 10)
+room_size = Vector2i(10, 7)
 
 [node name="Backdrop" type="ColorRect" parent="."]
 color = Color(0.09, 0.07, 0.08, 1)
@@ -38,7 +38,7 @@ tile_set = ExtResource("interior_tiles")
 y_sort_enabled = true
 
 [node name="Rug" type="Sprite2D" parent="Props"]
-position = Vector2(152, 112)
+position = Vector2(72, 80)
 texture = SubResource("tex_rug")
 offset = Vector2(0, -6)
 
@@ -48,12 +48,12 @@ texture = SubResource("tex_bed")
 offset = Vector2(0, -11)
 
 [node name="Table" type="Sprite2D" parent="Props"]
-position = Vector2(88, 80)
+position = Vector2(104, 48)
 texture = SubResource("tex_table")
 offset = Vector2(0, -7)
 
 [node name="Chair" type="Sprite2D" parent="Props"]
-position = Vector2(104, 80)
+position = Vector2(120, 48)
 texture = SubResource("tex_chair")
 offset = Vector2(0, -6)
 
