@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
 [ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
-[ext_resource type="Texture2D" uid="uid://ct5qmq3m0r5wo" path="res://assets/bushes/Bush_orange_flowers3.png" id="tex_stage0"]
-[ext_resource type="Texture2D" uid="uid://bq37pf16svcdt" path="res://assets/bushes/Bush_orange_flowers2.png" id="tex_stage1"]
-[ext_resource type="Texture2D" uid="uid://de2gppemtooen" path="res://assets/bushes/Bush_orange_flowers1.png" id="tex_stage2"]
+[ext_resource type="Texture2D" uid="uid://ct5qmq3m0r5wo" path="res://assets/bushes/Bush_orange_flowers3.png" id="tex_s0"]
+[ext_resource type="Texture2D" uid="uid://bq37pf16svcdt" path="res://assets/bushes/Bush_orange_flowers2.png" id="tex_s1"]
+[ext_resource type="Texture2D" uid="uid://de2gppemtooen" path="res://assets/bushes/Bush_orange_flowers1.png" id="tex_s2"]
 
 [sub_resource type="Resource" id="drop_fibre"]
 script = ExtResource("script_drop")
@@ -24,7 +24,9 @@ id = "bush_berry"
 display_name = "Berry Bush"
 sprite = null
 harvested_sprite = null
-growth_stages = Array[Texture2D]([ExtResource("tex_stage0"), ExtResource("tex_stage1"), ExtResource("tex_stage2")])
+sprite_variants = Array[Texture2D]([])
+harvested_variants = Array[Texture2D]([])
+growth_stages = Array[Texture2D]([ExtResource("tex_s0"), ExtResource("tex_s1"), ExtResource("tex_s2")])
 drops = Array[HarvestDrop]([SubResource("drop_fibre"), SubResource("drop_berries")])
 hits_required = 1
 regrow_seconds = 35.0
@@ -32,4 +34,4 @@ blocks_movement = false
 sprite_scale = 0.6
 particle_colour = Color(0.85, 0.55, 0.2, 1)
 spawn_terrains = Array[int]([3, 4])
-spawn_chance = 0.03
+spawn_chance = 0.02

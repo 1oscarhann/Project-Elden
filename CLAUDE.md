@@ -140,11 +140,28 @@ HUD call blew up. **Do not skip it.**
   16px grid and a 24px player; at scale 1.0 they bury him completely. `sprite_scale` in each
   `.tres` is set to **0.55** as a stopgap. The Sprout Lands pack has matching 32x32 trees, stumps
   and bushes (`assets/objects/sprout_objects.png`) — switching is a pure `.tres` edit, no code.
+- **Trees use per-node sprite variants.** `HarvestableData.sprite_variants` /
+  `harvested_variants` hold several looks for one kind; each spawned node picks one, seeded from
+  **its own position** (`_visual_rng`), so a given island always looks the same while drops stay
+  genuinely random. 18 tree sprites are in play — the pack ships each species at three sizes,
+  which also gives a natural spread of mature trees and saplings (18-41px at `sprite_scale` 0.55).
+- **Seven harvestable kinds**, weighted by terrain so the island reads naturally:
+  | kind | sprites | terrains |
+  |------|---------|----------|
+  | `tree_palm` | Palm_tree1/2 x 3 sizes | sand, grass — hugs the shore |
+  | `tree_leafy` | Tree1-3, Moss_tree1-3 | woodland, grass — inland |
+  | `tree_fruit` | Fruit_tree1-3 | grass, woodland |
+  | `tree_blossom` | Flower_tree1-3 | grass |
+  | `bush_berry` / `bush_blue` | 3 growth stages each | grass, woodland |
+  | `rock` | Sprout Lands boulder | sand, grass, woodland |
+  Autumn, snow and christmas trees are in the pack but deliberately unused — wrong for a tropical
+  island. Adding them is a `sprite_variants` edit.
 - **Boulders are the stone source** (`resources/harvestables/rock.tres`, "Boulder"), scattered on
   sand, grass and woodland at a 0.02 chance — about 90 across the island. There is no rock
   terrain to mine.
-- **Density is tuned to ~378 nodes, roughly 1 per 10 land tiles.** The first pass at 824 was a wall
-  of foliage with the player invisible inside it.
+- **Density is ~520 nodes, roughly 1 per 7 land tiles.** The first pass at 824 was a wall of
+  foliage with the player invisible inside it; with the variety in place 520 reads as woodland
+  with real clearings rather than a wall.
 - **Materials:** `GameState` now holds a `_materials` dictionary behind
   `add_material` / `spend_material` / `count_of` / `all_materials`, with `wood` kept as a
   delegating alias so the campfire is untouched. Phase 6 replaces the lot with `Inventory`.

@@ -2,12 +2,12 @@
 
 [ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
 [ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
-[ext_resource type="Texture2D" uid="uid://c030u4xktf5y2" path="res://assets/trees/Palm_tree1_1.png" id="tex_v0"]
-[ext_resource type="Texture2D" uid="uid://ckvh5djm6bhn4" path="res://assets/trees/Palm_tree1_2.png" id="tex_v1"]
-[ext_resource type="Texture2D" uid="uid://c8ho3a47b1gv6" path="res://assets/trees/Palm_tree1_3.png" id="tex_v2"]
-[ext_resource type="Texture2D" uid="uid://ccad4mbl7lixk" path="res://assets/trees/Palm_tree2_1.png" id="tex_v3"]
-[ext_resource type="Texture2D" uid="uid://bpv8t0g7vy02w" path="res://assets/trees/Palm_tree2_2.png" id="tex_v4"]
-[ext_resource type="Texture2D" uid="uid://j3x8frq4bmqp" path="res://assets/trees/Palm_tree2_3.png" id="tex_v5"]
+[ext_resource type="Texture2D" uid="uid://b0rlerx7d6wf6" path="res://assets/trees/Tree1.png" id="tex_v0"]
+[ext_resource type="Texture2D" uid="uid://x3816ls6ydl1" path="res://assets/trees/Tree2.png" id="tex_v1"]
+[ext_resource type="Texture2D" uid="uid://crf0hmaq7n152" path="res://assets/trees/Tree3.png" id="tex_v2"]
+[ext_resource type="Texture2D" uid="uid://cmpd5ofd5rpdm" path="res://assets/trees/Moss_tree1.png" id="tex_v3"]
+[ext_resource type="Texture2D" uid="uid://c5c6pd5moni2u" path="res://assets/trees/Moss_tree2.png" id="tex_v4"]
+[ext_resource type="Texture2D" uid="uid://crrkmtrs2ngqe" path="res://assets/trees/Moss_tree3.png" id="tex_v5"]
 [ext_resource type="Texture2D" uid="uid://bo1gpndqf5ebl" path="res://assets/trees/Broken_tree1.png" id="tex_h0"]
 [ext_resource type="Texture2D" uid="uid://beurdpjvdqi3s" path="res://assets/trees/Broken_tree2.png" id="tex_h1"]
 [ext_resource type="Texture2D" uid="uid://dw8nguo4s7f67" path="res://assets/trees/Broken_tree3.png" id="tex_h2"]
@@ -16,23 +16,23 @@
 [sub_resource type="Resource" id="drop_wood"]
 script = ExtResource("script_drop")
 item_id = "wood"
-min_count = 2
-max_count = 4
+min_count = 3
+max_count = 5
 
 [resource]
 script = ExtResource("script_data")
-id = "tree_palm"
-display_name = "Palm Tree"
+id = "tree_leafy"
+display_name = "Island Tree"
 sprite = null
 harvested_sprite = null
 sprite_variants = Array[Texture2D]([ExtResource("tex_v0"), ExtResource("tex_v1"), ExtResource("tex_v2"), ExtResource("tex_v3"), ExtResource("tex_v4"), ExtResource("tex_v5")])
 harvested_variants = Array[Texture2D]([ExtResource("tex_h0"), ExtResource("tex_h1"), ExtResource("tex_h2"), ExtResource("tex_h3")])
 growth_stages = Array[Texture2D]([])
 drops = Array[HarvestDrop]([SubResource("drop_wood")])
-hits_required = 4
-regrow_seconds = 90.0
+hits_required = 5
+regrow_seconds = 110.0
 blocks_movement = true
 sprite_scale = 0.55
 particle_colour = Color(0.62, 0.45, 0.26, 1)
-spawn_terrains = Array[int]([2, 3])
-spawn_chance = 0.045
+spawn_terrains = Array[int]([4, 3])
+spawn_chance = 0.06

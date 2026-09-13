@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
 [ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
-[ext_resource type="Texture2D" uid="uid://dmofloci2vike" path="res://assets/trees/Fruit_tree1.png" id="tex_v0"]
-[ext_resource type="Texture2D" uid="uid://bs73egudbffr2" path="res://assets/trees/Fruit_tree2.png" id="tex_v1"]
-[ext_resource type="Texture2D" uid="uid://bxngjudbkf56u" path="res://assets/trees/Fruit_tree3.png" id="tex_v2"]
+[ext_resource type="Texture2D" uid="uid://dfp3fov7n0ywc" path="res://assets/trees/Flower_tree1.png" id="tex_v0"]
+[ext_resource type="Texture2D" uid="uid://dg2yie8aatx5b" path="res://assets/trees/Flower_tree2.png" id="tex_v1"]
+[ext_resource type="Texture2D" uid="uid://lii64r4d2kxu" path="res://assets/trees/Flower_tree3.png" id="tex_v2"]
 [ext_resource type="Texture2D" uid="uid://bo1gpndqf5ebl" path="res://assets/trees/Broken_tree1.png" id="tex_h0"]
 [ext_resource type="Texture2D" uid="uid://beurdpjvdqi3s" path="res://assets/trees/Broken_tree2.png" id="tex_h1"]
 [ext_resource type="Texture2D" uid="uid://dw8nguo4s7f67" path="res://assets/trees/Broken_tree3.png" id="tex_h2"]
@@ -16,26 +16,26 @@ item_id = "wood"
 min_count = 2
 max_count = 3
 
-[sub_resource type="Resource" id="drop_fruit"]
+[sub_resource type="Resource" id="drop_fibre"]
 script = ExtResource("script_drop")
-item_id = "fruit"
+item_id = "fibre"
 min_count = 1
-max_count = 3
+max_count = 2
 
 [resource]
 script = ExtResource("script_data")
-id = "tree_fruit"
-display_name = "Fruit Tree"
+id = "tree_blossom"
+display_name = "Blossom Tree"
 sprite = null
 harvested_sprite = null
 sprite_variants = Array[Texture2D]([ExtResource("tex_v0"), ExtResource("tex_v1"), ExtResource("tex_v2")])
 harvested_variants = Array[Texture2D]([ExtResource("tex_h0"), ExtResource("tex_h1"), ExtResource("tex_h2"), ExtResource("tex_h3")])
 growth_stages = Array[Texture2D]([])
-drops = Array[HarvestDrop]([SubResource("drop_wood"), SubResource("drop_fruit")])
+drops = Array[HarvestDrop]([SubResource("drop_wood"), SubResource("drop_fibre")])
 hits_required = 4
-regrow_seconds = 140.0
+regrow_seconds = 130.0
 blocks_movement = true
 sprite_scale = 0.55
-particle_colour = Color(0.78, 0.32, 0.35, 1)
-spawn_terrains = Array[int]([3, 4])
-spawn_chance = 0.02
+particle_colour = Color(0.9, 0.6, 0.72, 1)
+spawn_terrains = Array[int]([3])
+spawn_chance = 0.015

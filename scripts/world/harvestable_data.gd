@@ -14,6 +14,13 @@ extends Resource
 @export var sprite: Texture2D
 ## Shown once harvested — a stump, a broken trunk, a smaller rock.
 @export var harvested_sprite: Texture2D
+## Alternative looks for the same kind of node. When non-empty each spawned node
+## picks one, so a wood of "leafy trees" is not the same sprite 90 times. The
+## pack ships each species at three sizes, which also gives a natural spread of
+## big trees and saplings. Falls back to `sprite` when empty.
+@export var sprite_variants: Array[Texture2D] = []
+## Same idea for the harvested look. Falls back to `harvested_sprite`.
+@export var harvested_variants: Array[Texture2D] = []
 ## Optional regrowth stages, SMALLEST FIRST. When set these replace the simple
 ## full/harvested pair: harvesting drops the node to stage 0 and it grows back
 ## up one stage per regrow_seconds. The CraftPix bushes ship as three sizes,
@@ -49,7 +56,11 @@ func is_staged() -> bool:
 
 
 ## The texture shown when fully grown, whichever scheme this node uses.
+## A representative fully-grown texture. Used for spawn-time layout tests, so
+## it returns the largest variant rather than a random one.
 func ready_texture() -> Texture2D:
 	if is_staged():
 		return growth_stages[growth_stages.size() - 1]
+	if not sprite_variants.is_empty():
+		return sprite_variants[0]
 	return sprite

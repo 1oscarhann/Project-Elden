@@ -28,6 +28,8 @@ var _hits := 0
 var _regrow_left := 0.0
 var _player_in_reach := false
 var _rng := RandomNumberGenerator.new()
+## Separate stream for looks, seeded by position — see _ready().
+var _visual_rng := RandomNumberGenerator.new()
 var _tween: Tween
 ## Resting scale, so the squash tween and the data scale do not fight.
 var _base_scale := Vector2.ONE
@@ -39,6 +41,9 @@ func _ready() -> void:
 		push_error("Harvestable has no HarvestableData assigned.")
 		set_process(false)
 		return
+	# Which variant this node wears is seeded from where it stands, so a given
+	# island always looks the same while drops stay genuinely random.
+	_visual_rng.seed = hash(Vector2i(position.round()))
 	# Built element-by-element: a ternary here yields an untyped Array, which
 	# will not assign to Array[Texture2D].
 	_stages.clear()
@@ -46,8 +51,8 @@ func _ready() -> void:
 		for texture in data.growth_stages:
 			_stages.append(texture)
 	else:
-		_stages.append(data.harvested_sprite)
-		_stages.append(data.sprite)
+		_stages.append(_pick(data.harvested_variants, data.harvested_sprite))
+		_stages.append(_pick(data.sprite_variants, data.sprite))
 	_stage = _stages.size() - 1
 	_interact.body_entered.connect(_on_reach_entered)
 	_interact.body_exited.connect(_on_reach_exited)
@@ -95,6 +100,13 @@ func hit() -> bool:
 	_regrow_left = data.regrow_seconds
 	harvested.emit(data)
 	return true
+
+
+## One of `variants`, or `fallback` when no variants are configured.
+func _pick(variants: Array[Texture2D], fallback: Texture2D) -> Texture2D:
+	if variants.is_empty():
+		return fallback
+	return variants[_visual_rng.randi_range(0, variants.size() - 1)]
 
 
 func _award_drops() -> void:

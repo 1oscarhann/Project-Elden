@@ -4,11 +4,11 @@
 [ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
 [ext_resource type="Texture2D" uid="uid://c1xa3tsu4m71g" path="res://assets/objects/sprout_objects.png" id="tex_sprout"]
 
-[sub_resource type="AtlasTexture" id="full"]
+[sub_resource type="AtlasTexture" id="rock_full"]
 atlas = ExtResource("tex_sprout")
 region = Rect2(112, 16, 16, 16)
 
-[sub_resource type="AtlasTexture" id="broken"]
+[sub_resource type="AtlasTexture" id="rock_broken"]
 atlas = ExtResource("tex_sprout")
 region = Rect2(96, 16, 16, 16)
 
@@ -22,8 +22,10 @@ max_count = 3
 script = ExtResource("script_data")
 id = "rock"
 display_name = "Boulder"
-sprite = SubResource("full")
-harvested_sprite = SubResource("broken")
+sprite = SubResource("rock_full")
+harvested_sprite = SubResource("rock_broken")
+sprite_variants = Array[Texture2D]([])
+harvested_variants = Array[Texture2D]([])
 growth_stages = Array[Texture2D]([])
 drops = Array[HarvestDrop]([SubResource("drop_stone")])
 hits_required = 3

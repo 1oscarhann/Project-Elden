@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
@@ -7,10 +7,12 @@
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="campfire"]
 [ext_resource type="Resource" path="res://resources/harvestables/bush_berry.tres" id="harv_0"]
-[ext_resource type="Resource" path="res://resources/harvestables/rock.tres" id="harv_1"]
-[ext_resource type="Resource" path="res://resources/harvestables/tree_fruit.tres" id="harv_2"]
-[ext_resource type="Resource" path="res://resources/harvestables/tree_oak.tres" id="harv_3"]
-[ext_resource type="Resource" path="res://resources/harvestables/tree_palm.tres" id="harv_4"]
+[ext_resource type="Resource" path="res://resources/harvestables/bush_blue.tres" id="harv_1"]
+[ext_resource type="Resource" path="res://resources/harvestables/rock.tres" id="harv_2"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_blossom.tres" id="harv_3"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_fruit.tres" id="harv_4"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_leafy.tres" id="harv_5"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_palm.tres" id="harv_6"]
 [ext_resource type="PackedScene" path="res://scenes/world/Harvestable.tscn" id="harvestable_scene"]
 
 [sub_resource type="Gradient" id="sky_gradient"]
@@ -34,7 +36,7 @@ rock_threshold = 0.68
 script = ExtResource("script_world")
 generator = SubResource("generator")
 campfire_scene = ExtResource("campfire")
-harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_1"), ExtResource("harv_2"), ExtResource("harv_3"), ExtResource("harv_4")])
+harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_1"), ExtResource("harv_2"), ExtResource("harv_3"), ExtResource("harv_4"), ExtResource("harv_5"), ExtResource("harv_6")])
 harvestable_scene = ExtResource("harvestable_scene")
 
 [node name="Water" type="TileMapLayer" parent="."]
