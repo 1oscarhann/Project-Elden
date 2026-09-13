@@ -31,7 +31,8 @@ Basic pack, as are the Phase 8 building art — `assets/objects/hut.png`
 `Wooden_House_Walls_Tilset`. Some of the assets in this project are made by Cup Nooble; the pack's licensing
 terms are reproduced here as that licence requires for open-source projects:
 
-- The assets may be modified. (Our terrain atlas darkens two rows; see `tools/build_terrain_atlas.gd`.)
+- The assets may be modified. (We darken the grass sheet for woodland and luminance-remap it
+  onto sand's hue for the beach; see `tools/build_terrain_atlas.gd`.)
 - **Usable in non-commercial projects only.** Anything to do with NFTs or AI training is not allowed.
 - The asset pack itself may not be redistributed or resold, even slightly modified. Redistributing
   a project made with the assets — including open source — is allowed, with this note.

@@ -108,6 +108,51 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### Terrain rebuild (post-Phase-9)
+
+- **The island is LAYERED now, not one flat grid of terrain rows.** Sea under every cell, then
+  `Sand`, `Grass`, `Woodland` TileMapLayers, each autotiled against emptiness. The Sprout Lands
+  edge pieces are drawn on transparency, so a grass blob laid over sand *curves into* it. The old
+  `Ground` layer is gone; `world.ground_layer` now points at **`Sand`**, which covers every land
+  cell and therefore carries the navigation mesh and answers "is this dry land".
+- **⚠️ Biome is no longer recoverable from the tilemap** — the layers encode SHAPE, not terrain.
+  `World.terrain_at(cell)` reads the stored generator grid. Anything that used to infer terrain
+  from `get_cell_atlas_coords().y` is wrong now.
+- **⚠️ The corner bits are MEASURED FROM THE ART, not typed in.** `build_tileset.gd` probes each
+  16px cell at its four extreme **2x2** corners: opaque = that corner is this terrain. Both
+  `Grass.png` and `Tilled_Dirt.png` yield a complete 16/16 corner set that way. **A 3px probe does
+  not work** — the diamond notches that form the inner corners sit exactly on the cell junction,
+  so a wider probe straddles them and reports a solid corner. That one pixel of slop is the
+  difference between 10/16 and 16/16 signatures.
+- **Texture variety is free.** Every fully-solid cell is registered as its own tile with identical
+  corner bits, so Godot picks at random among equal matches: the grass interior is drawn from
+  **13** different cells, sand from 13, rather than one repeated tile.
+- **⚠️ The beach is the GRASS blob re-hued, not Tilled_Dirt.** Tilled_Dirt is ploughed-field art —
+  its edge pieces are nearly square, because the edge of a ploughed field is meant to be straight.
+  Used as a beach it produced the one genuinely blocky boundary on the island. `build_terrain_atlas.gd`
+  luminance-remaps the grass blob onto sand's hue (`sand_blob.png`). Sampling sand's own ramp
+  directly does NOT work: it spans luminance 190-219 against grass's 140-228, and flattening to
+  that erases the dark outline that makes the edge read.
+- **⚠️ There is ONE sea colour, deliberately.** The pack has no deep-to-shallow transition art, so
+  two flat water tiles met at a hard rectangular step — the most obvious artefact on the first
+  rebuild. The generator still classifies `DEEP_WATER`; nothing draws it differently.
+- **Two water sources, same art:** source 0 carries collision (open sea), source 1 does not and is
+  painted UNDER the land. Without the collision-free twin the player is walled in on dry ground.
+- **The sea shimmers by shader, not by frames.** The sheet's four animation frames differ by only
+  **2-4% of their pixels**, which is why the sea read as static; they still cycle, and
+  `assets/shaders/water_shimmer.gdshader` adds movement on top. It modulates COLOUR only and reads
+  the texture at its true UV — nudging UV on a TileMapLayer would drag neighbouring tiles' pixels
+  in across the atlas and break seams. Fully transparent pixels are skipped so the shoreline's
+  soft alpha edge survives. Measured: **54.6% of sea pixels move, median delta 2/255, peak 16**.
+- **⚠️ Every tree and bush PNG on disk is ALREADY in the scatter** — all 22 trees, all 6 bushes.
+  There is no unused nature art to add variety from. Rock clusters, gem bushes, stumps and ruins
+  exist only in pasted preview images that never became files.
+- `tools/terrain_shots.gd` shoots the island from above and at each biome boundary. Blocky edges
+  are invisible at play zoom and obvious from above — judge terrain there, not in a gameplay shot.
+- **Regression is 131 checks**, and now asserts the things that actually matter: sand covers
+  exactly the land, no land cell sits on solid water, every terrain has all 15 corner cases plus
+  interior variety, and **the shoreline uses 652 edge tiles rather than squares**.
+
 ### UI theme (post-Phase-9 fix)
 
 - **The RPG UI pack was never actually in the repo**, so Phase 6's "theming" was plain default
@@ -357,7 +402,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
     godot --headless --path . res://tools/regression_check.tscn
 
-118 checks across every phase built so far; exits non-zero on failure. It exists because a
+131 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

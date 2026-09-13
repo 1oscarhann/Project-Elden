@@ -11,12 +11,26 @@ extends Room
 signal island_built(bounds: Rect2)
 
 const Terrain := IslandGenerator.Terrain
-## Terrain rows at or above this are dry land; below it is water, which is the
-## layer that carries collision.
+## Terrain at or above this is dry land.
 const FIRST_LAND: int = Terrain.SAND
-## Columns per terrain row in the atlas: variants on land, animation frames on water.
-const VARIANTS := 4
-const SOURCE_ID := 0
+
+## Tileset source ids, from tools/build_tileset.gd. The "open" water source is
+## the same art without collision — it goes UNDER the land so the sea is a
+## continuous backdrop instead of stopping at the beach.
+##
+## There is one sea colour on purpose: the pack has no deep-to-shallow
+## transition art, so a separate deep tile met the shallows at a hard
+## rectangular step. The generator still classifies depth; nothing draws it.
+const SRC_WATER_SOLID := 0
+const SRC_WATER_OPEN := 1
+const SRC_SAND := 2
+const SRC_GRASS := 3
+const SRC_WOOD := 4
+## The one corner-match terrain set, and the terrains inside it.
+const TERRAIN_SET := 0
+const T_SAND := 0
+const T_GRASS := 1
+const T_WOOD := 2
 
 @export var generator: IslandGenerator
 
@@ -24,7 +38,11 @@ const SOURCE_ID := 0
 # than exported: @export'd Node references serialize as NodePath and are not
 # reliably resolved by the time _ready() runs.
 @onready var water_layer: TileMapLayer = $Water
-@onready var ground_layer: TileMapLayer = $Ground
+## Sand covers every land cell, so it is the layer that answers "is this dry
+## land" for building and the one that carries the navigation mesh.
+@onready var ground_layer: TileMapLayer = $Sand
+@onready var grass_layer: TileMapLayer = $Grass
+@onready var wood_layer: TileMapLayer = $Woodland
 @onready var props_layer: Node2D = $Props
 @onready var _animals: AnimalSpawner = $Animals
 
@@ -47,6 +65,9 @@ var _rng := RandomNumberGenerator.new()
 var _occupied: Dictionary = {}
 var _spawn_cell := Vector2i.ZERO
 var _bounds := Rect2()
+## The terrain grid this island was painted from. Kept because terrain is no
+## longer recoverable from the tilemap: the layers encode SHAPE, not biome.
+var _grid: Array = []
 
 
 func _ready() -> void:
@@ -59,6 +80,7 @@ func build() -> void:
 		return
 
 	var grid: Array = generator.generate()
+	_grid = grid
 	_rng.seed = generator.last_seed
 
 	_occupied.clear()
@@ -135,25 +157,57 @@ func _mark(origin: Vector2i, footprint: Vector2i) -> void:
 			_occupied[origin + Vector2i(x, y)] = true
 
 
+## Which terrain a cell was generated as. Returns DEEP_WATER off the map.
+func terrain_at(cell: Vector2i) -> int:
+	if _grid.is_empty() or cell.y < 0 or cell.y >= _grid.size():
+		return Terrain.DEEP_WATER
+	var row: PackedByteArray = _grid[cell.y]
+	if cell.x < 0 or cell.x >= row.size():
+		return Terrain.DEEP_WATER
+	return int(row[cell.x])
+
+
 func world_to_cell(position: Vector2) -> Vector2i:
 	return ground_layer.local_to_map(ground_layer.to_local(position))
 
 
-## Water goes on one layer and land on the other, and the two sets never
-## overlap — so the water layer's collision only ever blocks actual water.
+## The island is painted as stacked layers rather than one flat grid: sea
+## everywhere, then sand over the land, then grass, then woodland. Each land
+## layer is autotiled against emptiness, and because the sheets' edge pieces
+## are drawn on transparency, every boundary curves into whatever is beneath
+## it instead of meeting it at a hard step.
 func _paint(grid: Array) -> void:
 	water_layer.clear()
 	ground_layer.clear()
+	grass_layer.clear()
+	wood_layer.clear()
+
+	var land: Array[Vector2i] = []
+	var grassy: Array[Vector2i] = []
+	var woody: Array[Vector2i] = []
 	for y in generator.map_size.y:
 		var row: PackedByteArray = grid[y]
 		for x in generator.map_size.x:
+			var cell := Vector2i(x, y)
 			var terrain := int(row[x])
 			var is_land := terrain >= FIRST_LAND
-			# Land rows hold four interchangeable variants; the water rows hold a
-			# single animated tile whose columns are frames, not variants.
-			var column := _rng.randi_range(0, VARIANTS - 1) if is_land else 0
-			var layer: TileMapLayer = ground_layer if is_land else water_layer
-			layer.set_cell(Vector2i(x, y), SOURCE_ID, Vector2i(column, terrain))
+			# Sea under everything. Only genuinely open water gets the solid
+			# variant, or the player would be walled in on dry land.
+			water_layer.set_cell(cell, SRC_WATER_OPEN if is_land else SRC_WATER_SOLID,
+				Vector2i.ZERO)
+			if is_land:
+				land.append(cell)
+			if terrain >= Terrain.GRASS:
+				grassy.append(cell)
+			if terrain == Terrain.FOREST:
+				woody.append(cell)
+
+	# Godot picks the corner tile for each cell, and picks at random between
+	# equally good matches — which is where the grass texture variety comes
+	# from, since every solid interior cell in the sheet is registered.
+	ground_layer.set_cells_terrain_connect(land, TERRAIN_SET, T_SAND, false)
+	grass_layer.set_cells_terrain_connect(grassy, TERRAIN_SET, T_GRASS, false)
+	wood_layer.set_cells_terrain_connect(woody, TERRAIN_SET, T_WOOD, false)
 
 
 ## Walks every tile once and offers it to each harvestable in turn; the first

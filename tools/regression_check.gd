@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 118
+const EXPECTED_CHECKS := 131
 
 var f := 0
 var fails := 0
@@ -98,20 +98,96 @@ func _phase1() -> void:
 
 func _phase2() -> void:
 	print("\n-- Phase 2: world --")
+	# The island is layered now: sea under everything, then sand, grass and
+	# woodland autotiled on top. Biome is NOT recoverable from the tilemap —
+	# the layers encode shape, so terrain questions go to world.terrain_at().
 	var water: TileMapLayer = world.get_node("Water")
-	var ground: TileMapLayer = world.get_node("Ground")
-	var total: int = water.get_used_cells().size() + ground.get_used_cells().size()
-	ck(total == world.generator.map_size.x * world.generator.map_size.y,
-		"every cell painted exactly once", str(total))
-	var overlap := 0
-	for c in ground.get_used_cells():
-		if water.get_cell_source_id(c) != -1:
-			overlap += 1
-	ck(overlap == 0, "water and land never overlap", str(overlap))
-	var src: TileSetAtlasSource = water.tile_set.get_source(0)
-	ck(src.get_tile_animation_frames_count(Vector2i(0, 0)) > 1, "water animates")
-	ck(src.get_tile_data(Vector2i(0, 0), 0).get_collision_polygons_count(0) > 0,
-		"water carries collision")
+	var sand: TileMapLayer = world.get_node("Sand")
+	var grass: TileMapLayer = world.get_node("Grass")
+	var wood: TileMapLayer = world.get_node("Woodland")
+	var area: int = world.generator.map_size.x * world.generator.map_size.y
+	ck(water.get_used_cells().size() == area, "the sea is painted under every cell",
+		str(water.get_used_cells().size()))
+
+	var land := 0
+	var wrong_sand := 0
+	var wrong_grass := 0
+	for y in world.generator.map_size.y:
+		for x in world.generator.map_size.x:
+			var cell := Vector2i(x, y)
+			var is_land: bool = world.terrain_at(cell) >= World.FIRST_LAND
+			if is_land:
+				land += 1
+			if is_land != (sand.get_cell_source_id(cell) != -1):
+				wrong_sand += 1
+			var is_grass: bool = world.terrain_at(cell) >= IslandGenerator.Terrain.GRASS
+			if is_grass != (grass.get_cell_source_id(cell) != -1):
+				wrong_grass += 1
+	ck(wrong_sand == 0, "sand covers exactly the dry land", "%d wrong of %d" % [wrong_sand, land])
+	ck(wrong_grass == 0, "grass covers exactly the grass and woodland", str(wrong_grass))
+	ck(wood.get_used_cells().size() < grass.get_used_cells().size(),
+		"woodland is a subset of the grass it sits on")
+
+	# Only genuinely open sea is solid. Land sits over a collision-free twin,
+	# or the player would be walled in on dry ground.
+	var solid: TileSetAtlasSource = water.tile_set.get_source(World.SRC_WATER_SOLID)
+	var open: TileSetAtlasSource = water.tile_set.get_source(World.SRC_WATER_OPEN)
+	ck(solid.get_tile_animation_frames_count(Vector2i.ZERO) == 4, "the sea animates across 4 frames")
+	ck(solid.get_tile_data(Vector2i.ZERO, 0).get_collision_polygons_count(0) > 0,
+		"open sea carries collision")
+	ck(open.get_tile_data(Vector2i.ZERO, 0).get_collision_polygons_count(0) == 0,
+		"and the sea under the land does not")
+	var walled := 0
+	for c in sand.get_used_cells():
+		if water.get_cell_source_id(c) == World.SRC_WATER_SOLID:
+			walled += 1
+	ck(walled == 0, "no land cell sits on solid water", str(walled))
+
+	# Autotiling: a complete corner set per terrain, and more than one interior
+	# tile, which is what stops the grass being one texture repeated.
+	var ts: TileSet = sand.tile_set
+	ck(ts.get_terrain_sets_count() == 1 and ts.get_terrain_set_mode(0) == TileSet.TERRAIN_MODE_MATCH_CORNERS,
+		"one corner-match terrain set")
+	for pair in [[World.SRC_SAND, "sand"], [World.SRC_GRASS, "grass"], [World.SRC_WOOD, "woodland"]]:
+		var atlas: TileSetAtlasSource = ts.get_source(pair[0])
+		var cases := {}
+		for i in atlas.get_tiles_count():
+			var coord: Vector2i = atlas.get_tile_id(i)
+			var data := atlas.get_tile_data(coord, 0)
+			var bits := 0
+			for b in 4:
+				if data.get_terrain_peering_bit([TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER,
+						TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
+						TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER,
+						TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER][b]) != -1:
+					bits |= 1 << b
+			cases[bits] = int(cases.get(bits, 0)) + 1
+		ck(cases.size() == 15, "%s has all 15 corner cases" % pair[1], str(cases.size()))
+		ck(int(cases.get(15, 0)) > 4, "%s has interior variety" % pair[1],
+			"%d variants" % int(cases.get(15, 0)))
+
+	# The real point of all of it: boundaries must actually use edge tiles.
+	var edges := 0
+	for c in sand.get_used_cells():
+		var coord: Vector2i = sand.get_cell_atlas_coords(c)
+		var data := (ts.get_source(World.SRC_SAND) as TileSetAtlasSource).get_tile_data(coord, 0)
+		var full := true
+		for n in [TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER, TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
+				TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER, TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER]:
+			if data.get_terrain_peering_bit(n) == -1:
+				full = false
+		if not full:
+			edges += 1
+	ck(edges > 200, "the shoreline is drawn with edge tiles, not squares",
+		"%d edge tiles" % edges)
+
+	# The sheet's four frames differ by only a few percent, so the sea needs the
+	# shimmer shader on top to read as moving at all.
+	var mat := water.material as ShaderMaterial
+	ck(mat != null and mat.shader != null
+		and mat.shader.resource_path.ends_with("water_shimmer.gdshader"),
+		"the sea carries the shimmer shader")
+
 	ck(props.y_sort_enabled, "props layer is y-sorted")
 
 
@@ -419,30 +495,26 @@ func _phase9() -> void:
 		var cell: Vector2i = world.world_to_cell(a.global_position)
 		if world.ground_layer.get_cell_source_id(cell) == -1:
 			wrong.append("%s in the sea" % a.data.id)
-		elif not a.data.spawn_terrains.has(world.ground_layer.get_cell_atlas_coords(cell).y):
-			wrong.append("%s on terrain %d" % [a.data.id, world.ground_layer.get_cell_atlas_coords(cell).y])
+		elif not a.data.spawn_terrains.has(world.terrain_at(cell)):
+			wrong.append("%s on terrain %d" % [a.data.id, world.terrain_at(cell)])
 	ck(wrong.is_empty(), "every animal stands on terrain its data allows", str(wrong.slice(0, 3)))
 
 	# Navigation: the island's own tiles carry the mesh, the sea does not.
 	var ts: TileSet = world.ground_layer.tile_set
 	ck(ts.get_navigation_layers_count() > 0, "the tileset has a navigation layer")
-	var src: TileSetAtlasSource = ts.get_source(0)
-	var land_nav: int = 0
-	var sea_nav: int = 0
-	for row in 5:
-		var coord := Vector2i(0, row)
-		if not src.has_tile(coord):
-			continue
-		var poly: NavigationPolygon = src.get_tile_data(coord, 0).get_navigation_polygon(0)
-		var has: bool = poly != null and poly.get_polygon_count() > 0
-		if not has:
-			continue
-		if row < 2:
-			sea_nav += 1
-		else:
+	# Navigation rides the sand layer, which covers every land cell exactly.
+	var sand_src: TileSetAtlasSource = ts.get_source(World.SRC_SAND)
+	var land_nav := 0
+	for i in sand_src.get_tiles_count():
+		var poly: NavigationPolygon = sand_src.get_tile_data(sand_src.get_tile_id(i), 0).get_navigation_polygon(0)
+		if poly != null and poly.get_polygon_count() > 0:
 			land_nav += 1
-	ck(land_nav == 3, "all three land rows are navigable", str(land_nav))
-	ck(sea_nav == 0, "and the sea is not — an animal cannot path into it", str(sea_nav))
+	ck(land_nav == sand_src.get_tiles_count(), "every sand tile is navigable",
+		"%d of %d" % [land_nav, sand_src.get_tiles_count()])
+	var sea_src: TileSetAtlasSource = ts.get_source(World.SRC_WATER_SOLID)
+	var sea_poly: NavigationPolygon = sea_src.get_tile_data(Vector2i.ZERO, 0).get_navigation_polygon(0)
+	ck(sea_poly == null or sea_poly.get_polygon_count() == 0,
+		"and the sea is not — an animal cannot path into it")
 	ck(world.ground_layer.navigation_enabled, "the ground layer bakes that mesh")
 
 	# Drops are data, and rolling one respects its chance.

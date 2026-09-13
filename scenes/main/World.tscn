@@ -1,9 +1,10 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
 [ext_resource type="Script" path="res://scripts/world/island_generator.gd" id="script_gen"]
 [ext_resource type="TileSet" path="res://assets/tiles/island_terrain.tres" id="tileset"]
+[ext_resource type="Shader" path="res://assets/shaders/water_shimmer.gdshader" id="shader_water"]
 [ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="campfire"]
 [ext_resource type="Resource" path="res://resources/harvestables/bush_berry.tres" id="harv_0"]
 [ext_resource type="Resource" path="res://resources/harvestables/bush_blue.tres" id="harv_1"]
@@ -18,6 +19,13 @@
 [ext_resource type="Resource" path="res://resources/animals/hare.tres" id="anim_0"]
 [ext_resource type="Resource" path="res://resources/animals/deer.tres" id="anim_1"]
 [ext_resource type="Resource" path="res://resources/animals/grouse.tres" id="anim_2"]
+
+[sub_resource type="ShaderMaterial" id="mat_water"]
+shader = ExtResource("shader_water")
+shader_parameter/loop_seconds = 12.0
+shader_parameter/shimmer_strength = 0.085
+shader_parameter/band_size = 34.0
+shader_parameter/shimmer_tint = Vector3(0.72, 0.9, 1)
 
 [sub_resource type="Gradient" id="sky_gradient"]
 offsets = PackedFloat32Array(0, 0.2, 0.27, 0.34, 0.7, 0.77, 0.86, 1)
@@ -44,9 +52,16 @@ harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_
 harvestable_scene = ExtResource("harvestable_scene")
 
 [node name="Water" type="TileMapLayer" parent="."]
+material = SubResource("mat_water")
 tile_set = ExtResource("tileset")
 
-[node name="Ground" type="TileMapLayer" parent="."]
+[node name="Sand" type="TileMapLayer" parent="."]
+tile_set = ExtResource("tileset")
+
+[node name="Grass" type="TileMapLayer" parent="."]
+tile_set = ExtResource("tileset")
+
+[node name="Woodland" type="TileMapLayer" parent="."]
 tile_set = ExtResource("tileset")
 
 [node name="Props" type="Node2D" parent="."]
