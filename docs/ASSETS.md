@@ -129,3 +129,21 @@ Art assets by CraftPix.net (free licence — attribution required):
 - Item/UI icon sheets (CraftPix)
 https://craftpix.net
 ```
+
+---
+
+## 7. Ground tileset — owner-supplied reference
+
+`docs/reference/tileset_reference_preview.webp` — the top-down grass/dirt/stone tileset chosen
+for the island ground.
+
+**This file is a lossy marketing preview (1800x1200), not the source asset.** It was resampled
+non-integer, so it has no recoverable pixel grid and its tiles cannot be sliced cleanly at any
+scale. Only its palette was usable; `assets/tiles/island_terrain.png` is redrawn at 16px from
+those sampled colours by `tools/gen_terrain_tiles.py`.
+
+**To do this properly, drop the original PNG or zip into `raw_assets/`.** Also note for whoever
+does: the sheet's grass/dirt base tiles are flat single colours, it contains no ocean tile (only
+wave overlays), and no sand at all.
+
+**Licence/attribution for this pack is still unknown** — add it to `CREDITS.md` before shipping.
