@@ -11,7 +11,7 @@ extends SceneTree
 
 const TILE := Vector2i(16, 16)
 const COLS := 4
-const ROWS := 6
+const ROWS := 5
 ## Rows below this are water: animated, and solid.
 const LAND_ROW := 2
 const WATER_FPS := 0.45

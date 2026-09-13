@@ -142,6 +142,8 @@ https://craftpix.net
 - `Water.png` is 64x16 = **four animation frames** of one tile, wired up as an animated tile.
 - The pack has **no dark grass** and **no second water tile**, so forest and deep water are
   darkened copies (the licence allows modification).
+- `Hills.png` is currently **unused** — it supplied the old rock terrain, which has been
+  removed. Kept for possible Phase 8 cliff autotiles.
 - Unused but available for later: grass/dirt/hill autotile blobs (Phase 8 terrain sets), fences,
   doors, wooden house, chest, furniture, plants, chicken/cow sprites, and a colour palette.
 

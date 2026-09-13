@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Builds assets/tiles/island_terrain.png from the Sprout Lands sheets.
 ##
-## The atlas is 4 columns x 6 rows of 16px tiles, one terrain per row, in the
+## The atlas is 4 columns x 5 rows of 16px tiles, one terrain per row, in the
 ## order consumed by scripts/world/island_generator.gd. Columns are variants,
 ## except the two water rows where the four columns are animation frames.
 ##
@@ -15,6 +15,9 @@ const SRC := "res://assets/tiles/sprout_lands/"
 ## row -> [sheet, [cells...], darken]
 ## Cells are (x, y) in 16px units within that sheet. Chosen by scanning every
 ## cell for full opacity; see CLAUDE.md for the coordinates and why.
+##
+## There is no stone row: the island has no rock terrain. Stone comes from
+## boulders scattered on the ground as Harvestable nodes.
 const LAYOUT := [
 	# Deep water: the pack has one water tile, so depth is that tile darkened.
 	["Water.png", [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)], 0.62],
@@ -25,8 +28,6 @@ const LAYOUT := [
 	# The pack has no dark grass, so forest is its grass darkened. The licence
 	# explicitly allows modifying the assets.
 	["Grass.png", [Vector2i(0, 5), Vector2i(1, 5), Vector2i(2, 6), Vector2i(3, 6)], 0.80],
-	# Brown earth from the underside of the hill cliffs.
-	["Hills.png", [Vector2i(0, 8), Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 2)], 1.0],
 ]
 
 

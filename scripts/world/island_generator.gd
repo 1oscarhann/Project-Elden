@@ -9,8 +9,12 @@ extends Resource
 ## replacing this resource and touching nothing in world.gd.
 
 ## Row order here must match the row order of assets/tiles/island_terrain.png
-## and of tools/gen_terrain_tiles.py.
-enum Terrain { DEEP_WATER, SHALLOW_WATER, SAND, GRASS, FOREST, ROCK }
+## and of tools/build_terrain_atlas.gd.
+##
+## There is deliberately NO hill or stone terrain. Stone comes from boulders
+## scattered on the ground as Harvestable nodes, not from a mined biome — the
+## island is sea, beach, grass and woodland, and nothing else.
+enum Terrain { DEEP_WATER, SHALLOW_WATER, SAND, GRASS, FOREST }
 
 ## Terrain values at or above this are dry land the player can stand on.
 const FIRST_WALKABLE := Terrain.SAND
@@ -34,10 +38,9 @@ const FIRST_WALKABLE := Terrain.SAND
 @export_range(0.0, 1.0) var land_level := 0.38
 
 @export_group("Land cover")
-## Second noise field decides grass/forest/rock on land, so rock is scattered
-## in patches rather than forming one blob at the island's peak.
+## A second noise field thickens land into woodland in patches, so trees form
+## groves rather than scattering evenly.
 @export_range(0.0, 1.0) var forest_threshold := 0.52
-@export_range(0.0, 1.0) var rock_threshold := 0.68
 
 ## The seed actually used for the most recent generate() call.
 var last_seed := 0
@@ -94,8 +97,6 @@ func _classify(elevation: float, cover: float) -> int:
 		return Terrain.SHALLOW_WATER
 	if elevation < land_level:
 		return Terrain.SAND
-	if cover >= rock_threshold:
-		return Terrain.ROCK
 	if cover >= forest_threshold:
 		return Terrain.FOREST
 	return Terrain.GRASS

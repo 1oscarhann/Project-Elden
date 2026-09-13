@@ -140,7 +140,10 @@ HUD call blew up. **Do not skip it.**
   16px grid and a 24px player; at scale 1.0 they bury him completely. `sprite_scale` in each
   `.tres` is set to **0.55** as a stopgap. The Sprout Lands pack has matching 32x32 trees, stumps
   and bushes (`assets/objects/sprout_objects.png`) — switching is a pure `.tres` edit, no code.
-- **Density is tuned to ~318 nodes, about 1 per 12 land tiles.** The first pass at 824 was a wall
+- **Boulders are the stone source** (`resources/harvestables/rock.tres`, "Boulder"), scattered on
+  sand, grass and woodland at a 0.02 chance — about 90 across the island. There is no rock
+  terrain to mine.
+- **Density is tuned to ~378 nodes, roughly 1 per 10 land tiles.** The first pass at 824 was a wall
   of foliage with the player invisible inside it.
 - **Materials:** `GameState` now holds a `_materials` dictionary behind
   `add_material` / `spend_material` / `count_of` / `all_materials`, with `wood` kept as a
@@ -214,10 +217,13 @@ HUD call blew up. **Do not skip it.**
   | 2 | sand | `Tilled_Dirt.png` | (0,5) (1,5) (2,5) (0,6) |
   | 3 | grass | `Grass.png` | (0,5) (1,5) (2,6) (3,6) |
   | 4 | forest | `Grass.png` | same, darkened to 0.80 |
-  | 5 | rock | `Hills.png` | (0,8) (1,8) (2,8) (1,2) |
   The pack has no dark grass and only one water tile, hence the two darkened rows. Cells were
   chosen by scanning every 16px cell for full opacity — the sheets are mostly autotile blobs on
   transparency, and only rows 5-6 of `Grass`/`Tilled_Dirt` hold solid interior tiles.
+- **There is NO hill or stone terrain, by design (owner's call).** The island is sea, beach,
+  grass and woodland — five terrains, five atlas rows. **Stone comes from boulders scattered on
+  the ground as `Harvestable` nodes**, not from a mined biome. `Hills.png` stays committed for
+  possible Phase 8 cliff autotiles but nothing currently reads it.
 - **⚠️ Sprout Lands is NON-COMMERCIAL only** and forbids NFT/AI-training use. The CraftPix packs
   allow commercial use; this one does not, so the project as a whole is now non-commercial.
   Full terms are reproduced in `CREDITS.md` as the licence requires. Swap these tiles before
