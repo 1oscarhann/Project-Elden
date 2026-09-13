@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/recipe_data.gd" id="script_recipe"]
+[ext_resource type="Script" path="res://scripts/world/recipe_ingredient.gd" id="script_ingredient"]
+
+[sub_resource type="Resource" id="ing_plank"]
+script = ExtResource("script_ingredient")
+item_id = "plank"
+count = 12
+
+[sub_resource type="Resource" id="ing_stone"]
+script = ExtResource("script_ingredient")
+item_id = "stone"
+count = 6
+
+[sub_resource type="Resource" id="ing_rope"]
+script = ExtResource("script_ingredient")
+item_id = "rope"
+count = 2
+
+[resource]
+script = ExtResource("script_recipe")
+id = "hut_kit"
+result_item_id = "hut_kit"
+result_count = 1
+ingredients = Array[RecipeIngredient]([SubResource("ing_plank"), SubResource("ing_stone"), SubResource("ing_rope")])
+required_station = "workbench"
+unlocked_by_default = true
+category = "building"

@@ -106,7 +106,71 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 7 complete.** Next up: `docs/phases/phase08_building.md`.
+**Phase 8 complete.** Next up: `docs/phases/phase09_animals.md`.
+
+### Phase 8 notes
+
+- **⚠️ Spec conflict, flagged not improvised:** the phase spec says interiors are built "from the
+  dungeon-pack walls/floors", but that pack is restricted to **fire, doors and chests only**
+  (your call, Phase 3). Interiors therefore use Sprout Lands'
+  `Wooden_House_Walls_Tilset.png` instead — floor `(1,1)` cream brick, wall `(1,0)` planks, built
+  by `tools/build_interior_tileset.gd`. It matches the rest of the game's art better anyway.
+- **`Room` is the new base class** (`scripts/world/room.gd`). Anywhere the player can stand is a
+  Room and answers four questions: where to arrive (`entry_position`), which node to Y-sort them
+  into (`sort_layer`), how to clamp the camera (`camera_bounds`), and `on_entered`/`on_exited`.
+  `World` and `Interior` both extend it, so the manager never special-cases the island.
+- **`RoomManager` owns the player, not the world.** `Main.tscn` is now
+  `Main > Rooms(RoomManager) > {World, Player}` — **the Player instance moved out of
+  `World.tscn`**; the manager reparents it into the current room's Y-sort layer. Rooms are
+  **cached and hidden, never freed**: regenerating the island on every doorway would be slow and
+  would undo every tree you chopped.
+- **⚠️ Hiding a room does NOT disable its collision.** The first build put interiors on top of
+  the island, and the player stood in a hut was being shoved around by the *ocean's* collider.
+  Interiors are now parked in their own world slot (`SLOT_ORIGIN` (-20000,-20000), `SLOT_PITCH`
+  2048) so inactive rooms are spatially harmless. Bonus: the island's `SkyTint` CanvasModulate is
+  a child of `World`, so hiding the island also lifts the night tint — interiors are lit.
+- **Doors defer their group call.** `body_entered` fires mid physics-flush; instancing an interior
+  there means adding Area2Ds during the flush, which the physics server refuses
+  (`area_set_shape_disabled` … "while flushing queries") and leaves the new door's shape broken —
+  so the exit you walked in by never fires again. `call_group_flags(GROUP_CALL_DEFERRED, …)`.
+- **The door cooldown holds, it does not drop.** 0.6s after arriving, doors are ignored so you
+  cannot bounce straight back. Originally that *discarded* the trigger, so walking straight onto
+  the far door did nothing until you stepped off and back on. It now parks the door in `_pending`
+  and fires it when the cooldown ends, but only if you are genuinely still stood in it.
+- **Camera bounds are pulled, not pushed.** `World._ready()` runs before the player's camera
+  exists, so the old `call_group(PlayerCamera.GROUP, "set_world_bounds", …)` inside `build()`
+  found nothing. Rooms now *report* `camera_bounds()` and the manager applies it on activation.
+  An empty `Rect2` means unlimited.
+- **Build mode (B) lives under the Player** and never touches the world directly — it asks the
+  current Room `can_build()` / `build_at()`, so an interior could allow building by overriding
+  two methods. The ghost wears the placed scene's **own** `$Sprite` texture, so there is no
+  preview art to keep in sync. Green = valid, red = blocked; clamped to 6 tiles' reach; the item
+  is spent **only after** the world accepts the building.
+- **Placement is a data question.** `ItemData` gained `placed_scene` + `placed_footprint`;
+  `is_placeable()` is just "has a scene". Four buildables ship: `campfire_kit`, `workbench`,
+  `fence` (all 1x1) and `hut_kit` (3x3). Multi-tile footprints anchor on their **bottom centre**
+  (`World.footprint_anchor`) so a hut sits on the tiles the ghost showed.
+- **`World._occupied` is the one source of truth for free ground.** Harvestables, the seeded
+  campfire and every placed building mark their cells; `can_build` also requires a painted ground
+  cell, which rules out the sea and the map edge in one test.
+- **Interiors are painted, not hand-authored.** `room_size` (default **14x10**) is an export;
+  `interior.gd` paints the wall ring, leaves a gap at the bottom-centre door cell, and derives
+  `$Entry` and `$ExitDoor` from it — so resizing a room cannot leave the door in a wall.
+  A 14x10 room behind a 3x3 hut is the "bigger on the inside" conceit; **24x16 was tried and reads
+  as a barn, not a home.** A `Backdrop` ColorRect sized in code covers the gap around a room
+  smaller than the viewport, which otherwise showed the engine's clear colour.
+- **Shelter reuses the campfire's counted heat hook** — `Interior.on_entered()` calls
+  `GameState.add_heat_source()`. The warmth system still has no idea what a building is.
+- **New keys:** **B** toggles build mode, **left-click / E** places, Esc cancels.
+- **Regression suite is now 78 checks** and guards against its own truncation: a runtime error
+  used to abort a phase and still print "ALL GREEN", so `EXPECTED_CHECKS` is asserted at the end.
+  Bump it when you add checks.
+- **`tools/phase8_shots.gd`** is a repeatable visual walkthrough — it drives build mode through
+  the real input path, places a hut, steps inside and back out, saving a shot at each beat. Needs
+  a display: `xvfb-run -a godot --path . --rendering-driver opengl3 res://tools/phase8_shots.tscn`.
+- **⚠️ Workbench/fence art is borrowed.** The workbench is Sprout Lands' dresser
+  (`sprout_furniture` `Rect2(48,32,16,16)`) and the hut is `Free_Chicken_House`. Both are one
+  `region`/`texture` line away from better art.
 
 ### Phase 7 notes
 
@@ -149,6 +213,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
   `rope` borrows a bundle-of-sticks icon — the packs have no actual rope. Swap it when better art
   turns up; it is one `region` line in `resources/items/rope.tres`.
 - **Keys:** C opens crafting, F uses the selected hotbar item (Tab/I bag, 1-8 hotbar, E interact).
+  Phase 8 adds **B** for build mode.
 
 ### Phase 6 notes
 
@@ -194,7 +259,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
     godot --headless --path . res://tools/regression_check.tscn
 
-51 checks across every phase built so far; exits non-zero on failure. It exists because a
+78 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

@@ -2,20 +2,20 @@
 
 [ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
 [ext_resource type="Texture2D" uid="uid://ihfv64srq6s5" path="res://assets/icons/items_tools_ores.png" id="sheet"]
-[ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="placed"]
+[ext_resource type="PackedScene" path="res://scenes/world/Hut.tscn" id="placed"]
 
 [sub_resource type="AtlasTexture" id="icon"]
 atlas = ExtResource("sheet")
-region = Rect2(128, 96, 32, 32)
+region = Rect2(160, 96, 32, 32)
 
 [resource]
 script = ExtResource("script_item")
-id = "campfire_kit"
-display_name = "Campfire Kit"
+id = "hut_kit"
+display_name = "Hut Kit"
 icon = SubResource("icon")
-max_stack = 10
+max_stack = 3
 category = 3
-description = "Everything needed to lay a new fire."
+description = "Timber and fittings for a small hut. Roomier than it looks."
 placed_scene = ExtResource("placed")
-placed_footprint = Vector2i(1, 1)
+placed_footprint = Vector2i(3, 3)
 stats = {}

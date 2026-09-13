@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
+[ext_resource type="Script" path="res://scripts/world/room_manager.gd" id="script_rooms"]
 [ext_resource type="PackedScene" path="res://scenes/main/World.tscn" id="world"]
+[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Hotbar.tscn" id="hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InventoryPanel.tscn" id="bag"]
@@ -8,7 +10,12 @@
 
 [node name="Main" type="Node2D"]
 
-[node name="World" parent="." instance=ExtResource("world")]
+[node name="Rooms" type="Node2D" parent="."]
+script = ExtResource("script_rooms")
+
+[node name="World" parent="Rooms" instance=ExtResource("world")]
+
+[node name="Player" parent="Rooms" instance=ExtResource("player")]
 
 [node name="HUD" parent="." instance=ExtResource("hud")]
 

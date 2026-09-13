@@ -122,5 +122,11 @@ func remove_heat_source() -> void:
 	_heat_sources = maxi(0, _heat_sources - 1)
 
 
+## Read-only, so a source that forgets to hand its registration back cannot
+## be papered over by something else setting the count.
+func heat_source_count() -> int:
+	return _heat_sources
+
+
 func _on_phase_changed(phase: DayNight.Phase) -> void:
 	_phase = phase

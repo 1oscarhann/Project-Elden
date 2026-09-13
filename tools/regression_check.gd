@@ -9,10 +9,16 @@ extends Node2D
 ##
 ## Exits 0 when everything passes, or with the number of failures.
 
+## Bumped whenever checks are added. A runtime error aborts the phase it is in
+## and every phase after it, and without this the truncated run still reported
+## ALL GREEN because nothing had actually *failed*.
+const EXPECTED_CHECKS := 78
+
 var f := 0
 var fails := 0
 var checks := 0
-var world: Node2D
+var rooms: RoomManager
+var world: World
 var props: Node2D
 var player: CharacterBody2D
 var fire: Campfire
@@ -37,9 +43,11 @@ func _process(_delta: float) -> void:
 			get_tree().quit(fails)
 		return
 	DayNight.paused = true
-	world = get_node("Main/World")
+	rooms = get_node("Main/Rooms")
+	world = rooms.get_node("World")
 	props = world.get_node("Props")
-	player = world.get_node("Props/Player")
+	# The room manager reparents the player into whichever room they are in.
+	player = props.get_node("Player")
 	for c in props.get_children():
 		if c is Campfire:
 			fire = c
@@ -53,6 +61,9 @@ func _process(_delta: float) -> void:
 	_phase5()
 	_phase6()
 	_phase7()
+	_phase8()
+	ck(checks >= EXPECTED_CHECKS - 1, "the whole suite ran — no phase aborted early",
+		"%d of %d" % [checks + 1, EXPECTED_CHECKS])
 	print("\n%d checks, %s" % [checks, "ALL GREEN" if fails == 0 else "%d FAILURE(S)" % fails])
 	get_tree().quit(fails)
 
@@ -222,3 +233,110 @@ func _phase7() -> void:
 	ck(not GameState.consume("stone"), "a plain material does nothing")
 	Inventory.clear()
 	GameState.set_warmth(100.0)
+
+
+func _phase8() -> void:
+	print("\n-- Phase 8: building & interiors --")
+	ck(rooms != null and rooms.is_in_group(RoomManager.GROUP), "room manager is reachable by group")
+	ck(rooms.current_room() == world, "the island is the room we start in")
+	ck(player.get_parent() == props, "player lives in the current room's y-sort layer")
+
+	# Placement is a data question — an item is buildable when it carries a scene.
+	var kit: ItemData = ItemDB.get_item("hut_kit")
+	var wood: ItemData = ItemDB.get_item("wood")
+	ck(kit != null and kit.is_placeable(), "hut_kit is placeable from its own data")
+	ck(wood != null and not wood.is_placeable(), "a plain material is not")
+
+	# Somewhere genuinely free: search out from spawn rather than assume.
+	var spawn: Vector2i = world.world_to_cell(world.entry_position())
+	var spot := Vector2i.ZERO
+	var found := false
+	for r in range(2, 20):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var c := spawn + Vector2i(dx, dy)
+				if world.can_build(c, Vector2i(3, 3)):
+					spot = c
+					found = true
+					break
+			if found:
+				break
+		if found:
+			break
+	ck(found, "the island has room to build on", str(spot))
+	if not found:
+		return
+
+	var before: int = props.get_child_count()
+	var hut: Node2D = world.build_at(kit.placed_scene, spot, Vector2i(3, 3))
+	ck(hut != null and props.get_child_count() == before + 1, "a building lands in the props layer")
+	ck(not world.can_build(spot, Vector2i(3, 3)), "and its tiles are taken afterwards")
+	ck(not world.can_build(spot + Vector2i(2, 2), Vector2i(1, 1)),
+		"every tile of the footprint, not just the origin")
+	ck(world.build_at(kit.placed_scene, spot, Vector2i(3, 3)) == null, "so nothing can stack on it")
+	ck(not world.can_build(Vector2i(-5, -5), Vector2i(1, 1)), "and the sea is not buildable")
+
+	# Bottom-centre anchoring: the 3x3 footprint's base row is where it stands.
+	var tile: int = world.water_layer.tile_set.tile_size.x
+	var anchor: Vector2 = world.footprint_anchor(spot, Vector2i(3, 3))
+	ck(is_equal_approx(anchor.x, float(spot.x * tile) + tile * 1.5)
+		and is_equal_approx(anchor.y, float((spot.y + 3) * tile)),
+		"footprint anchors on its bottom centre", str(anchor))
+
+	# A placed workbench must actually be a station — that is the point of
+	# building one. Driven directly rather than by walking into it, so the
+	# check does not depend on a physics frame having settled.
+	var bench_item: ItemData = ItemDB.get_item("workbench")
+	var pad := Vector2i.ZERO
+	for r in range(4, 14):
+		if world.can_build(spot + Vector2i(r, 0), Vector2i(1, 1)):
+			pad = spot + Vector2i(r, 0)
+			break
+	var bench: Node2D = world.build_at(bench_item.placed_scene, pad, Vector2i(1, 1))
+	ck(bench != null, "found somewhere for a workbench", str(pad))
+	if bench == null:
+		return
+	var station := bench.get_node_or_null("Station") as CraftingStation
+	ck(station != null and station.station_id == "workbench", "a placed workbench carries a station")
+	if station != null:
+		var had: bool = Crafting.has_station("workbench")
+		station._on_entered(player)
+		ck(Crafting.has_station("workbench"), "standing at it registers the station")
+		station._on_exited(player)
+		ck(Crafting.has_station("workbench") == had, "and leaving hands it back")
+	bench.queue_free()
+
+	# The door in that hut leads somewhere, and that somewhere is a Room.
+	var door := hut.get_node_or_null("Door") as Door
+	ck(door != null and door.leads_inside(), "the hut carries a door that leads inside")
+	if door == null:
+		return
+	var inside := door.interior_scene.instantiate() as Interior
+	add_child(inside)
+	ck(inside != null, "the interior is a Room")
+	var floor_layer: TileMapLayer = inside.get_node("Floor")
+	var painted: int = floor_layer.get_used_cells().size()
+	ck(painted == inside.room_size.x * inside.room_size.y,
+		"the interior paints its whole room", "%d cells" % painted)
+	# Bigger on the inside is the whole point of the phase.
+	ck(inside.room_size.x * inside.room_size.y > 3 * 3, "and is bigger inside than out",
+		"%dx%d vs 3x3" % [inside.room_size.x, inside.room_size.y])
+	var doorway: Array = floor_layer.get_used_cells().filter(
+		func(c: Vector2i) -> bool: return c.y == inside.room_size.y - 1 \
+			and floor_layer.get_cell_atlas_coords(c) == inside.floor_tile)
+	ck(doorway.size() == 1, "exactly one gap in the wall ring", str(doorway.size()))
+	ck(inside.get_node("ExitDoor").position.distance_to(inside.get_node("Entry").position) > 0.0,
+		"you do not arrive standing on the exit")
+	ck(not inside.camera_bounds().has_area() or inside.camera_bounds().size.x < world.camera_bounds().size.x,
+		"the interior clamps the camera tighter than the island")
+
+	# Shelter reuses the campfire's counted heat hook — warmth knows nothing of rooms.
+	var heat_before: int = GameState.heat_source_count()
+	inside.on_entered()
+	ck(GameState.heat_source_count() == heat_before + 1, "being indoors registers as shelter")
+	inside.on_entered()
+	ck(GameState.heat_source_count() == heat_before + 1, "entering twice does not double-count")
+	inside.on_exited()
+	ck(GameState.heat_source_count() == heat_before, "and leaving hands it back")
+	inside.queue_free()
+	hut.queue_free()

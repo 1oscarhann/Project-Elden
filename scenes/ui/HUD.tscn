@@ -39,4 +39,4 @@ show_percentage = false
 
 [node name="Hint" type="Label" parent="Readout"]
 layout_mode = 2
-text = "WASD · Shift run · E use · Tab bag · C craft · F consume"
+text = "WASD · Shift run · E use · Tab bag · C craft · B build · F consume"

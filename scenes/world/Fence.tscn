@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Texture2D" uid="uid://mogxm643otm5" path="res://assets/objects/sprout_fences.png" id="fences"]
+
+[sub_resource type="AtlasTexture" id="tex_fence"]
+atlas = ExtResource("fences")
+region = Rect2(32, 48, 16, 16)
+
+[sub_resource type="RectangleShape2D" id="shape_body"]
+size = Vector2(16, 6)
+
+[node name="Fence" type="Node2D"]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = SubResource("tex_fence")
+offset = Vector2(0, -4)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+position = Vector2(0, -2)
+shape = SubResource("shape_body")

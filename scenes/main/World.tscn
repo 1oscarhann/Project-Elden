@@ -1,10 +1,9 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
 [ext_resource type="Script" path="res://scripts/world/island_generator.gd" id="script_gen"]
 [ext_resource type="TileSet" path="res://assets/tiles/island_terrain.tres" id="tileset"]
-[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="campfire"]
 [ext_resource type="Resource" path="res://resources/harvestables/bush_berry.tres" id="harv_0"]
 [ext_resource type="Resource" path="res://resources/harvestables/bush_blue.tres" id="harv_1"]
@@ -47,8 +46,6 @@ tile_set = ExtResource("tileset")
 
 [node name="Props" type="Node2D" parent="."]
 y_sort_enabled = true
-
-[node name="Player" parent="Props" instance=ExtResource("player")]
 
 [node name="SkyTint" type="CanvasModulate" parent="."]
 script = ExtResource("script_sky")

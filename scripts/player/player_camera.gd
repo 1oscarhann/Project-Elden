@@ -22,7 +22,14 @@ func _ready() -> void:
 	add_to_group(GROUP)
 
 
+## An empty rect clears the limits, for a room that does not want any.
 func set_world_bounds(bounds: Rect2) -> void:
+	if bounds.size == Vector2.ZERO:
+		limit_left = -10000000
+		limit_top = -10000000
+		limit_right = 10000000
+		limit_bottom = 10000000
+		return
 	limit_left = int(bounds.position.x)
 	limit_top = int(bounds.position.y)
 	limit_right = int(bounds.end.x)

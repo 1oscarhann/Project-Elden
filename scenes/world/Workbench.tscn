@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/crafting_station.gd" id="script_station"]
+[ext_resource type="Texture2D" uid="uid://cngqmt215shfc" path="res://assets/objects/sprout_furniture.png" id="furniture"]
+
+[sub_resource type="AtlasTexture" id="tex_bench"]
+atlas = ExtResource("furniture")
+region = Rect2(48, 32, 16, 16)
+
+[sub_resource type="RectangleShape2D" id="shape_body"]
+size = Vector2(14, 7)
+
+[sub_resource type="CircleShape2D" id="shape_station"]
+radius = 28.0
+
+[node name="Workbench" type="Node2D"]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = SubResource("tex_bench")
+offset = Vector2(0, -8)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+position = Vector2(0, -3)
+shape = SubResource("shape_body")
+
+[node name="Station" type="Area2D" parent="."]
+script = ExtResource("script_station")
+station_id = "workbench"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Station"]
+shape = SubResource("shape_station")

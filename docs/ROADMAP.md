@@ -13,7 +13,7 @@ phase until the previous one runs and I've confirmed it. Tick boxes as we go.
 | 5 | Resource nodes + harvesting juice | `phase05_resources.md` | ☑ |
 | 6 | Inventory (data-driven items) | `phase06_inventory.md` | ☑ |
 | 7 | Crafting tree | `phase07_crafting.md` | ☑ |
-| 8 | Grid base building + interiors | `phase08_building.md` | ☐ |
+| 8 | Grid base building + interiors | `phase08_building.md` | ☑ |
 | 9 | Passive animals + hunting | `phase09_animals.md` | ☐ |
 | 10 | Save/load + polish pass | `phase10_polish.md` | ☐ |
 

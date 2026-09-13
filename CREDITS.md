@@ -18,13 +18,16 @@ https://craftpix.net
 
 Built with [Godot Engine](https://godotengine.org) (MIT licence).
 
-## Ground tileset — Sprout Lands
+## Terrain, buildings and furniture — Sprout Lands
 
 Assets — From: **Sprout Lands** — By: **Cup Nooble**
 <https://cupnooble.carrd.co>
 
 `assets/tiles/sprout_lands/` and the terrain atlas built from it are from the Sprout Lands
-Basic pack. Some of the assets in this project are made by Cup Nooble; the pack's licensing
+Basic pack, as are the Phase 8 building art — `assets/objects/hut.png`
+(`Free_Chicken_House`), `assets/objects/sprout_furniture.png` (`Basic_Furniture`),
+`assets/objects/sprout_fences.png` (`Fences`) and the interior tileset built from
+`Wooden_House_Walls_Tilset`. Some of the assets in this project are made by Cup Nooble; the pack's licensing
 terms are reproduced here as that licence requires for open-source projects:
 
 - The assets may be modified. (Our terrain atlas darkens two rows; see `tools/build_terrain_atlas.gd`.)

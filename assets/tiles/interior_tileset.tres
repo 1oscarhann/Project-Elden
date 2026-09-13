@@ -1,0 +1,13 @@
+[gd_resource type="TileSet" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/tiles/sprout_lands/Wooden_House_Walls_Tilset.png" id="1_g3m1y"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3nr2v"]
+texture = ExtResource("1_g3m1y")
+1:1/0 = 0
+1:0/0 = 0
+1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+
+[resource]
+physics_layer_0/collision_layer = 1
+sources/0 = SubResource("TileSetAtlasSource_3nr2v")

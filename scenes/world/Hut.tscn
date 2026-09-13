@@ -1,0 +1,32 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Texture2D" uid="uid://cgxqlu32fhxhl" path="res://assets/objects/hut.png" id="hut"]
+[ext_resource type="Script" path="res://scripts/world/door.gd" id="script_door"]
+[ext_resource type="PackedScene" path="res://scenes/world/interiors/HutInterior.tscn" id="interior"]
+
+[sub_resource type="RectangleShape2D" id="shape_walls"]
+size = Vector2(40, 18)
+
+[sub_resource type="RectangleShape2D" id="shape_door"]
+size = Vector2(12, 8)
+
+[node name="Hut" type="Node2D"]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("hut")
+offset = Vector2(0, -24)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+position = Vector2(0, -18)
+shape = SubResource("shape_walls")
+
+[node name="Door" type="Area2D" parent="."]
+script = ExtResource("script_door")
+interior_scene = ExtResource("interior")
+arrival_offset = Vector2(0, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door"]
+position = Vector2(0, -4)
+shape = SubResource("shape_door")

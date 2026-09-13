@@ -1,10 +1,10 @@
 class_name World
-extends Node2D
+extends Room
 
 ## Builds the island.
 ##
 ## Asks the generator for a terrain grid, paints it into the two TileMapLayers,
-## scatters scenery, and drops the player on solid ground. Only the *painting*
+## scatters scenery, and reports where the player should stand. Only the *painting*
 ## lives here — the algorithm lives in the IslandGenerator resource — so either
 ## side can be replaced without touching the other.
 
@@ -26,7 +26,6 @@ const SOURCE_ID := 0
 @onready var water_layer: TileMapLayer = $Water
 @onready var ground_layer: TileMapLayer = $Ground
 @onready var props_layer: Node2D = $Props
-@onready var player: Node2D = $Props/Player
 
 @export_group("Scenery")
 ## Every kind of harvestable that may appear. Each carries its own terrains and
@@ -42,6 +41,11 @@ const SOURCE_ID := 0
 @export var spawn_clearing := Vector2(44.0, 48.0)
 
 var _rng := RandomNumberGenerator.new()
+## Tiles already taken by scenery or a placed building, so build mode can tell
+## a free patch of grass from an occupied one without hunting the scene tree.
+var _occupied: Dictionary = {}
+var _spawn_cell := Vector2i.ZERO
+var _bounds := Rect2()
 
 
 func _ready() -> void:
@@ -56,19 +60,78 @@ func build() -> void:
 	var grid: Array = generator.generate()
 	_rng.seed = generator.last_seed
 
+	_occupied.clear()
 	_paint(grid)
 	# Spawn is chosen before scattering so the clearing can be honoured.
-	var spawn := _find_spawn_tile(grid)
-	if player != null:
-		player.position = _tile_centre(spawn)
-	var fire_cell := _place_campfire(grid, spawn)
-	_scatter_harvestables(grid, spawn, fire_cell)
+	_spawn_cell = _find_spawn_tile(grid)
+	var fire_cell := _place_campfire(grid, _spawn_cell)
+	_scatter_harvestables(grid, _spawn_cell, fire_cell)
 
-	var bounds := Rect2(Vector2.ZERO, Vector2(generator.map_size * water_layer.tile_set.tile_size))
-	# Group calls rather than direct references, so the camera can live anywhere.
-	get_tree().call_group(PlayerCamera.GROUP, "set_world_bounds", bounds)
-	get_tree().call_group(PlayerCamera.GROUP, "snap_to_target")
-	island_built.emit(bounds)
+	# Stored rather than pushed at the camera here: this runs before the player
+	# exists, so the room manager applies it when it activates this room.
+	_bounds = Rect2(Vector2.ZERO, Vector2(generator.map_size * water_layer.tile_set.tile_size))
+	island_built.emit(_bounds)
+
+
+# --- Room interface ---------------------------------------------------------
+
+func sort_layer() -> Node2D:
+	return props_layer
+
+
+func entry_position() -> Vector2:
+	return _tile_centre(_spawn_cell)
+
+
+func camera_bounds() -> Rect2:
+	return _bounds
+
+
+# --- placement --------------------------------------------------------------
+
+## True when every tile of `footprint` at `origin` is dry, unoccupied land.
+func can_build(origin: Vector2i, footprint: Vector2i) -> bool:
+	for y in maxi(1, footprint.y):
+		for x in maxi(1, footprint.x):
+			var cell := origin + Vector2i(x, y)
+			if _occupied.has(cell):
+				return false
+			# Land is exactly "painted on the ground layer" — water lives on its
+			# own layer, so this rules out the sea and the map edge together.
+			if ground_layer.get_cell_source_id(cell) == -1:
+				return false
+	return true
+
+
+## Instances a buildable into the y-sorted props layer and marks its tiles.
+func build_at(scene: PackedScene, origin: Vector2i, footprint: Vector2i) -> Node2D:
+	if scene == null or not can_build(origin, footprint):
+		return null
+	var node: Node2D = scene.instantiate()
+	# Anchor a multi-tile footprint by its bottom-centre, so a 3x3 hut sits on
+	# the tiles the ghost showed rather than off to one side.
+	node.position = footprint_anchor(origin, footprint)
+	props_layer.add_child(node)
+	_mark(origin, footprint)
+	return node
+
+
+## World position a building with this footprint should sit at.
+func footprint_anchor(origin: Vector2i, footprint: Vector2i) -> Vector2:
+	var size := water_layer.tile_set.tile_size
+	var span := Vector2i(maxi(1, footprint.x), maxi(1, footprint.y))
+	var top_left := Vector2(origin * size)
+	return top_left + Vector2(span.x * size.x * 0.5, float(span.y * size.y))
+
+
+func _mark(origin: Vector2i, footprint: Vector2i) -> void:
+	for y in maxi(1, footprint.y):
+		for x in maxi(1, footprint.x):
+			_occupied[origin + Vector2i(x, y)] = true
+
+
+func world_to_cell(position: Vector2) -> Vector2i:
+	return ground_layer.local_to_map(ground_layer.to_local(position))
 
 
 ## Water goes on one layer and land on the other, and the two sets never
@@ -124,6 +187,7 @@ func _add_harvestable(data: HarvestableData, cell: Vector2i, clear_box: Rect2) -
 	node.data = data
 	node.position = pos
 	props_layer.add_child(node)
+	_occupied[cell] = true
 
 
 func _tile_centre(cell: Vector2i) -> Vector2:
@@ -150,6 +214,7 @@ func _place_campfire(grid: Array, spawn: Vector2i) -> Vector2i:
 	var fire: Node2D = campfire_scene.instantiate()
 	fire.position = _tile_centre(cell)
 	props_layer.add_child(fire)
+	_occupied[cell] = true
 	return cell
 
 
