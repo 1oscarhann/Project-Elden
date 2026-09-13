@@ -29,22 +29,19 @@ const SOURCE_ID := 0
 @onready var player: Node2D = $Props/Player
 
 @export_group("Scenery")
+## Every kind of harvestable that may appear. Each carries its own terrains and
+## spawn chance, so adding a tree or a rock is a new .tres and nothing else.
+@export var harvestables: Array[HarvestableData] = []
+@export var harvestable_scene: PackedScene
 ## The one campfire the world seeds near spawn. Phase 8 makes fires placeable;
 ## for now the night loop just needs somewhere to run to.
 @export var campfire_scene: PackedScene
-@export var tree_textures: Array[Texture2D] = []
-## Chance a forest tile grows a tree.
-@export_range(0.0, 1.0) var forest_tree_chance := 0.12
-## Chance a plain grass tile grows a tree.
-@export_range(0.0, 1.0) var grass_tree_chance := 0.015
 ## Box around the spawn that scenery must not cover. A plain radius is not
 ## enough: a canopy is ~74px tall, so a tree several tiles south still draws
 ## over the player's head.
 @export var spawn_clearing := Vector2(44.0, 48.0)
 
 var _rng := RandomNumberGenerator.new()
-## Cached per-texture offset that puts a trunk's base on the node origin.
-var _trunk_offsets: Dictionary = {}
 
 
 func _ready() -> void:
@@ -65,7 +62,7 @@ func build() -> void:
 	if player != null:
 		player.position = _tile_centre(spawn)
 	var fire_cell := _place_campfire(grid, spawn)
-	_scatter_trees(grid, spawn, fire_cell)
+	_scatter_harvestables(grid, spawn, fire_cell)
 
 	var bounds := Rect2(Vector2.ZERO, Vector2(generator.map_size * water_layer.tile_set.tile_size))
 	# Group calls rather than direct references, so the camera can live anywhere.
@@ -91,8 +88,10 @@ func _paint(grid: Array) -> void:
 			layer.set_cell(Vector2i(x, y), SOURCE_ID, Vector2i(column, terrain))
 
 
-func _scatter_trees(grid: Array, spawn: Vector2i, fire: Vector2i) -> void:
-	if tree_textures.is_empty():
+## Walks every tile once and offers it to each harvestable in turn; the first
+## whose terrain matches and whose chance comes up wins the tile.
+func _scatter_harvestables(grid: Array, spawn: Vector2i, fire: Vector2i) -> void:
+	if harvestables.is_empty() or harvestable_scene == null:
 		return
 	# Keep the player and the campfire both visible and reachable on load.
 	var clear_box := _clear_box(spawn)
@@ -102,30 +101,34 @@ func _scatter_trees(grid: Array, spawn: Vector2i, fire: Vector2i) -> void:
 		var row: PackedByteArray = grid[y]
 		for x in generator.map_size.x:
 			var terrain := int(row[x])
-			var chance := 0.0
-			if terrain == Terrain.FOREST:
-				chance = forest_tree_chance
-			elif terrain == Terrain.GRASS:
-				chance = grass_tree_chance
-			if chance <= 0.0 or _rng.randf() >= chance:
-				continue
-			_add_tree(Vector2i(x, y), clear_box)
+			for data in harvestables:
+				if data == null or not data.spawn_terrains.has(terrain):
+					continue
+				if _rng.randf() >= data.spawn_chance:
+					continue
+				_add_harvestable(data, Vector2i(x, y), clear_box)
+				break
 
 
-func _add_tree(cell: Vector2i, clear_box: Rect2) -> void:
-	var texture: Texture2D = tree_textures[_rng.randi_range(0, tree_textures.size() - 1)]
-	var offset := _trunk_offset(texture)
-	# Jitter inside the tile so the scatter doesn't read as a grid.
-	var pos := _tile_centre(cell) + Vector2(_rng.randf_range(-4.0, 4.0), _rng.randf_range(-3.0, 3.0))
-	# Only scenery that would draw OVER the player can hide him; anything with
-	# its base further north sorts behind and is harmless.
-	if pos.y > clear_box.position.y and _sprite_rect(texture, pos, offset).intersects(clear_box):
+func _add_harvestable(data: HarvestableData, cell: Vector2i, clear_box: Rect2) -> void:
+	var texture := data.ready_texture()
+	if texture == null:
 		return
-	var sprite := Sprite2D.new()
-	sprite.texture = texture
-	sprite.offset = offset
-	sprite.position = pos
-	props_layer.add_child(sprite)
+	# Jitter inside the tile so the scatter does not read as a grid.
+	var pos := _tile_centre(cell) + Vector2(_rng.randf_range(-4.0, 4.0), _rng.randf_range(-3.0, 3.0))
+	# Only scenery that would draw OVER the player can hide him; anything based
+	# further north sorts behind and is harmless.
+	if pos.y > clear_box.position.y and SpriteAnchor.world_rect(texture, pos, data.sprite_scale).intersects(clear_box):
+		return
+	var node: Node2D = harvestable_scene.instantiate()
+	node.data = data
+	node.position = pos
+	props_layer.add_child(node)
+
+
+func _tile_centre(cell: Vector2i) -> Vector2:
+	var size := water_layer.tile_set.tile_size
+	return Vector2(cell * size) + Vector2(size) * 0.5
 
 
 ## Footprint plus headroom around a tile that scenery must not cover.
@@ -148,31 +151,6 @@ func _place_campfire(grid: Array, spawn: Vector2i) -> Vector2i:
 	fire.position = _tile_centre(cell)
 	props_layer.add_child(fire)
 	return cell
-
-
-## World-space rect a centred Sprite2D would occupy.
-func _sprite_rect(texture: Texture2D, pos: Vector2, offset: Vector2) -> Rect2:
-	var size := Vector2(texture.get_size())
-	return Rect2(pos + offset - size * 0.5, size)
-
-
-## Measure where the trunk actually sits instead of hardcoding a number per
-## texture, so dropping new tree art into assets/trees/ just works.
-func _trunk_offset(texture: Texture2D) -> Vector2:
-	if _trunk_offsets.has(texture):
-		return _trunk_offsets[texture]
-	var image := texture.get_image()
-	var used := image.get_used_rect()
-	# Sprite2D is centred, so shift it up until the content's bottom edge is on
-	# the origin — that origin is what Y-sorting compares.
-	var offset := Vector2(0.0, float(image.get_height()) * 0.5 - float(used.end.y))
-	_trunk_offsets[texture] = offset
-	return offset
-
-
-func _tile_centre(cell: Vector2i) -> Vector2:
-	var size := water_layer.tile_set.tile_size
-	return Vector2(cell * size) + Vector2(size) * 0.5
 
 
 ## Spiral out from the middle for a land tile whose neighbours are also land, so

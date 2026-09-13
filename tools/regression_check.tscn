@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/regression_check.gd" id="script_check"]
+
+[node name="RegressionCheck" type="Node2D"]
+script = ExtResource("script_check")

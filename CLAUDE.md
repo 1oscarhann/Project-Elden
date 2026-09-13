@@ -106,7 +106,45 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 4 complete.** Next up: `docs/phases/phase05_resources.md`.
+**Phase 5 complete — this is the vertical-slice checkpoint. Play it before Phase 6.**
+Next up: `docs/phases/phase06_inventory.md`.
+
+### Regression suite — run this after ANY change
+
+    godot --headless --path . res://tools/regression_check.tscn
+
+31 checks across every phase built so far; exits non-zero on failure. It exists because a
+careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
+`speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
+HUD call blew up. **Do not skip it.**
+
+### Phase 5 notes
+
+- **Harvestables are fully data-driven.** `HarvestableData` (+ `HarvestDrop`) `.tres` files in
+  `resources/harvestables/` carry sprites, drop tables, hits, regrow time, draw scale, particle
+  colour, and *their own spawn terrains and chance*. Adding a tree, bush or rock is a new `.tres`
+  and nothing else — `world.gd` just offers each tile to each entry in turn, first match wins.
+- **Regrowth is one mechanism, not two.** Everything is a stage ladder: a staged node (the bushes
+  ship as three sizes) climbs its own stages, and a simple node is just the two-rung ladder
+  `[harvested, full]`. One code path covers both.
+- **Origins are measured, never hardcoded.** `SpriteAnchor.base_offset()` reads each texture's
+  alpha bounds and caches it, so new art anchors its base on the origin automatically — that is
+  the point Y-sorting compares. It re-anchors per stage, since the bush sizes differ in height.
+- **Feel:** squash-stretch tween (elastic settle), one-shot particle burst tinted per material,
+  and trauma-based camera shake on `player_camera.gd` (`add_trauma`, squared so small knocks stay
+  gentle). The player swing is driven by group call — harvestables never hold a player reference.
+- **The chop animation is the Sword_attack sheet**, per CLAUDE.md rule 6. ⚠️ He is visibly
+  swinging a *sword* at trees, which reads oddly for a no-combat game. Replace with axe art when
+  convenient — the SpriteFrames is regenerated from the sheet grid, so it is a one-file swap.
+- **⚠️ Tree art is out of scale with the tileset.** The CraftPix trees are ~74px tall against a
+  16px grid and a 24px player; at scale 1.0 they bury him completely. `sprite_scale` in each
+  `.tres` is set to **0.55** as a stopgap. The Sprout Lands pack has matching 32x32 trees, stumps
+  and bushes (`assets/objects/sprout_objects.png`) — switching is a pure `.tres` edit, no code.
+- **Density is tuned to ~318 nodes, about 1 per 12 land tiles.** The first pass at 824 was a wall
+  of foliage with the player invisible inside it.
+- **Materials:** `GameState` now holds a `_materials` dictionary behind
+  `add_material` / `spend_material` / `count_of` / `all_materials`, with `wood` kept as a
+  delegating alias so the campfire is untouched. Phase 6 replaces the lot with `Inventory`.
 
 ### Phase 4 notes
 

@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="HarvestableData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
+[ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
+[ext_resource type="Texture2D" uid="uid://c1xa3tsu4m71g" path="res://assets/objects/sprout_objects.png" id="tex_sprout"]
+
+[sub_resource type="AtlasTexture" id="full"]
+atlas = ExtResource("tex_sprout")
+region = Rect2(112, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="broken"]
+atlas = ExtResource("tex_sprout")
+region = Rect2(96, 16, 16, 16)
+
+[sub_resource type="Resource" id="drop_stone"]
+script = ExtResource("script_drop")
+item_id = "stone"
+min_count = 1
+max_count = 3
+
+[resource]
+script = ExtResource("script_data")
+id = "rock"
+display_name = "Rock"
+sprite = SubResource("full")
+harvested_sprite = SubResource("broken")
+growth_stages = Array[Texture2D]([])
+drops = Array[HarvestDrop]([SubResource("drop_stone")])
+hits_required = 3
+regrow_seconds = 75.0
+blocks_movement = true
+sprite_scale = 1.0
+particle_colour = Color(0.62, 0.62, 0.64, 1)
+spawn_terrains = Array[int]([5, 2])
+spawn_chance = 0.05

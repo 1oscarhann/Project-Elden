@@ -19,10 +19,10 @@ func _ready() -> void:
 	DayNight.ticked.connect(_on_ticked)
 	GameState.warmth_changed.connect(_on_warmth_changed)
 	GameState.cold_changed.connect(_on_cold_changed)
-	GameState.wood_changed.connect(_on_wood_changed)
+	GameState.material_changed.connect(_on_material_changed)
 	_on_ticked(DayNight.time_of_day)
 	_on_warmth_changed(GameState.warmth)
-	_on_wood_changed(GameState.wood)
+	_refresh_materials()
 
 
 func _on_ticked(_time_of_day: float) -> void:
@@ -39,5 +39,18 @@ func _on_cold_changed(is_cold: bool) -> void:
 	_warmth_bar.modulate = Color(0.6, 0.8, 1.0) if is_cold else Color.WHITE
 
 
-func _on_wood_changed(count: int) -> void:
-	_wood.text = "Wood  %d" % count
+func _on_material_changed(_item_id: String, _count: int) -> void:
+	_refresh_materials()
+
+
+## One line listing everything held. Ugly on purpose; Phase 6 gives it a real
+## inventory panel.
+func _refresh_materials() -> void:
+	var parts: PackedStringArray = []
+	var materials := GameState.all_materials()
+	var ids: Array = materials.keys()
+	ids.sort()
+	for id in ids:
+		if int(materials[id]) > 0:
+			parts.append("%s %d" % [String(id).capitalize(), materials[id]])
+	_wood.text = " · ".join(parts) if parts.size() > 0 else "nothing gathered"

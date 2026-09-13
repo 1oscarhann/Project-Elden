@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="script_world"]
 [ext_resource type="Script" path="res://scripts/world/sky_tint.gd" id="script_sky"]
@@ -6,17 +6,12 @@
 [ext_resource type="TileSet" path="res://assets/tiles/island_terrain.tres" id="tileset"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://scenes/world/Campfire.tscn" id="campfire"]
-[ext_resource type="Texture2D" uid="uid://dfp3fov7n0ywc" path="res://assets/trees/Flower_tree1.png" id="tree_0"]
-[ext_resource type="Texture2D" uid="uid://dmofloci2vike" path="res://assets/trees/Fruit_tree1.png" id="tree_1"]
-[ext_resource type="Texture2D" uid="uid://bs73egudbffr2" path="res://assets/trees/Fruit_tree2.png" id="tree_2"]
-[ext_resource type="Texture2D" uid="uid://cmpd5ofd5rpdm" path="res://assets/trees/Moss_tree1.png" id="tree_3"]
-[ext_resource type="Texture2D" uid="uid://c030u4xktf5y2" path="res://assets/trees/Palm_tree1_1.png" id="tree_4"]
-[ext_resource type="Texture2D" uid="uid://ckvh5djm6bhn4" path="res://assets/trees/Palm_tree1_2.png" id="tree_5"]
-[ext_resource type="Texture2D" uid="uid://ccad4mbl7lixk" path="res://assets/trees/Palm_tree2_1.png" id="tree_6"]
-[ext_resource type="Texture2D" uid="uid://bpv8t0g7vy02w" path="res://assets/trees/Palm_tree2_2.png" id="tree_7"]
-[ext_resource type="Texture2D" uid="uid://b0rlerx7d6wf6" path="res://assets/trees/Tree1.png" id="tree_8"]
-[ext_resource type="Texture2D" uid="uid://x3816ls6ydl1" path="res://assets/trees/Tree2.png" id="tree_9"]
-[ext_resource type="Texture2D" uid="uid://crf0hmaq7n152" path="res://assets/trees/Tree3.png" id="tree_10"]
+[ext_resource type="Resource" path="res://resources/harvestables/bush_berry.tres" id="harv_0"]
+[ext_resource type="Resource" path="res://resources/harvestables/rock.tres" id="harv_1"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_fruit.tres" id="harv_2"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_oak.tres" id="harv_3"]
+[ext_resource type="Resource" path="res://resources/harvestables/tree_palm.tres" id="harv_4"]
+[ext_resource type="PackedScene" path="res://scenes/world/Harvestable.tscn" id="harvestable_scene"]
 
 [sub_resource type="Gradient" id="sky_gradient"]
 offsets = PackedFloat32Array(0, 0.2, 0.27, 0.34, 0.7, 0.77, 0.86, 1)
@@ -39,7 +34,8 @@ rock_threshold = 0.68
 script = ExtResource("script_world")
 generator = SubResource("generator")
 campfire_scene = ExtResource("campfire")
-tree_textures = Array[Texture2D]([ExtResource("tree_0"), ExtResource("tree_1"), ExtResource("tree_2"), ExtResource("tree_3"), ExtResource("tree_4"), ExtResource("tree_5"), ExtResource("tree_6"), ExtResource("tree_7"), ExtResource("tree_8"), ExtResource("tree_9"), ExtResource("tree_10")])
+harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_1"), ExtResource("harv_2"), ExtResource("harv_3"), ExtResource("harv_4")])
+harvestable_scene = ExtResource("harvestable_scene")
 
 [node name="Water" type="TileMapLayer" parent="."]
 tile_set = ExtResource("tileset")

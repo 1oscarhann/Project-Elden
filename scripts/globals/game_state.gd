@@ -7,6 +7,7 @@ extends Node
 
 signal warmth_changed(warmth: float)
 signal wood_changed(count: int)
+signal material_changed(item_id: String, count: int)
 ## Fires only on the transition, so listeners don't have to diff it themselves.
 signal cold_changed(is_cold: bool)
 
@@ -29,25 +30,72 @@ const MAX_WARMTH := 100.0
 
 var warmth := MAX_WARMTH
 
-## Placeholder wood stockpile until Phase 6 replaces it with the Inventory
-## autoload. Kept behind add/spend so the call sites do not change when it goes.
-## Backed by a private field and a setter so that even a direct assignment
-## emits — otherwise the HUD silently desyncs from the real count.
-var _wood := 8
-var wood: int:
-	get:
-		return _wood
-	set(value):
-		set_wood(value)
+## Placeholder material stockpile until Phase 6 replaces it with the Inventory
+## autoload. Everything goes through add/spend/count_of, so the call sites do
+## not change when it goes. Backed privately with setters that always emit —
+## a direct assignment that skipped the signal silently desynced the HUD once.
+var _materials: Dictionary = {"wood": 8}
 
 ## How many heat sources currently contain the player. Phase 4's campfire just
 ## calls add/remove on its area signals, so none of the warmth maths below ever
 ## needs to know what a campfire is.
 var _heat_sources := 0
+
 ## Mirrors DayNight's phase. Cached from the signal rather than polled, and
 ## re-synced in _ready in case the clock moved before we connected.
 var _phase := DayNight.Phase.DAY
 var _was_cold := false
+
+## Convenience alias the campfire and HUD use. Delegates to the stockpile.
+var wood: int:
+	get:
+		return count_of("wood")
+	set(value):
+		set_material("wood", value)
+
+
+func count_of(item_id: String) -> int:
+	return int(_materials.get(item_id, 0))
+
+
+func set_material(item_id: String, value: int) -> void:
+	var clamped := maxi(0, value)
+	if clamped == count_of(item_id):
+		return
+	_materials[item_id] = clamped
+	material_changed.emit(item_id, clamped)
+	if item_id == "wood":
+		wood_changed.emit(clamped)
+
+
+func add_material(item_id: String, count: int = 1) -> void:
+	if count > 0:
+		set_material(item_id, count_of(item_id) + count)
+
+
+## Take from the stockpile. Returns false and changes nothing if short.
+func spend_material(item_id: String, count: int = 1) -> bool:
+	if count <= 0 or count_of(item_id) < count:
+		return false
+	set_material(item_id, count_of(item_id) - count)
+	return true
+
+
+## Every material currently held, for the HUD.
+func all_materials() -> Dictionary:
+	return _materials.duplicate()
+
+
+func set_wood(value: int) -> void:
+	set_material("wood", value)
+
+
+func add_wood(count: int = 1) -> void:
+	add_material("wood", count)
+
+
+func spend_wood(count: int = 1) -> bool:
+	return spend_material("wood", count)
 
 
 func _ready() -> void:
@@ -107,27 +155,6 @@ func chill() -> float:
 	if not is_cold() or cold_threshold <= 0.0:
 		return 0.0
 	return 1.0 - warmth / cold_threshold
-
-
-func set_wood(value: int) -> void:
-	var clamped := maxi(0, value)
-	if clamped == _wood:
-		return
-	_wood = clamped
-	wood_changed.emit(_wood)
-
-
-func add_wood(count: int = 1) -> void:
-	if count > 0:
-		set_wood(_wood + count)
-
-
-## Take wood from the stockpile. Returns false and changes nothing if short.
-func spend_wood(count: int = 1) -> bool:
-	if count <= 0 or _wood < count:
-		return false
-	set_wood(_wood - count)
-	return true
 
 
 ## Called by heat sources as the player enters and leaves their radius.

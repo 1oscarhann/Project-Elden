@@ -26,10 +26,39 @@ const STOP_EPSILON := 1.0
 
 @onready var _sprite: AnimatedSprite2D = $Sprite
 
+## Set while the one-shot harvest swing plays, so the movement state machine
+## does not stomp the animation mid-swing.
+var _swinging := false
+
 ## Last non-zero input direction, so idle keeps facing wherever we stopped.
 var _facing := Vector2.DOWN
 var _state := State.IDLE
 var _current_anim := ""
+
+
+func _ready() -> void:
+	# Joined by name so harvestables can ask for a swing without holding a
+	# reference to the player.
+	add_to_group("player")
+	_sprite.animation_finished.connect(_on_animation_finished)
+
+
+## Play the harvest chop, facing `target` if one is given. Ignored if already
+## swinging, so mashing the key cannot restart the animation every frame.
+func swing(target: Vector2 = Vector2.ZERO) -> void:
+	if _swinging:
+		return
+	if target != Vector2.ZERO:
+		var to_target := target - global_position
+		if to_target.length_squared() > 1.0:
+			_facing = to_target
+	_swinging = true
+	_current_anim = "chop_%s" % _direction_name(_facing)
+	_sprite.play(_current_anim)
+
+
+func _on_animation_finished() -> void:
+	_swinging = false
 
 
 func _physics_process(delta: float) -> void:
@@ -44,7 +73,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	_state = _resolve_state(input, running)
-	_play_animation()
+	# Moving cancels a swing; otherwise let the one-shot animation finish.
+	if _swinging and input != Vector2.ZERO:
+		_swinging = false
+	if not _swinging:
+		_play_animation()
 
 
 ## Ease velocity toward the target rather than snapping to it, so starts and

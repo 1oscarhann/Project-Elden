@@ -8,6 +8,15 @@ extends Camera2D
 
 const GROUP := "player_camera"
 
+@export_group("Shake")
+## Peak offset in pixels at full trauma.
+@export var max_shake := Vector2(3.0, 2.0)
+## Trauma lost per second. Higher = snappier settle.
+@export var trauma_decay := 2.4
+
+## 0..1. Squared before use so small knocks stay gentle and only big ones bite.
+var _trauma := 0.0
+
 
 func _ready() -> void:
 	add_to_group(GROUP)
@@ -25,3 +34,20 @@ func set_world_bounds(bounds: Rect2) -> void:
 ## because the world moves the player to its spawn tile after the scene builds.
 func snap_to_target() -> void:
 	reset_smoothing()
+
+
+## Called by anything that wants a kick — harvest hits, and later impacts.
+func add_trauma(amount: float) -> void:
+	_trauma = clampf(_trauma + amount, 0.0, 1.0)
+
+
+func _process(delta: float) -> void:
+	if _trauma <= 0.0:
+		if offset != Vector2.ZERO:
+			offset = Vector2.ZERO
+		return
+	_trauma = maxf(_trauma - trauma_decay * delta, 0.0)
+	var amount := _trauma * _trauma
+	offset = Vector2(
+		randf_range(-max_shake.x, max_shake.x),
+		randf_range(-max_shake.y, max_shake.y)) * amount

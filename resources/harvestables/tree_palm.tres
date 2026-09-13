@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="HarvestableData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
+[ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
+[ext_resource type="Texture2D" uid="uid://c030u4xktf5y2" path="res://assets/trees/Palm_tree1_1.png" id="tex_full"]
+[ext_resource type="Texture2D" uid="uid://bo1gpndqf5ebl" path="res://assets/trees/Broken_tree1.png" id="tex_broken"]
+
+[sub_resource type="Resource" id="drop_wood"]
+script = ExtResource("script_drop")
+item_id = "wood"
+min_count = 2
+max_count = 4
+
+[resource]
+script = ExtResource("script_data")
+id = "tree_palm"
+display_name = "Palm Tree"
+sprite = ExtResource("tex_full")
+harvested_sprite = ExtResource("tex_broken")
+growth_stages = Array[Texture2D]([])
+drops = Array[HarvestDrop]([SubResource("drop_wood")])
+hits_required = 4
+regrow_seconds = 90.0
+blocks_movement = true
+sprite_scale = 0.55
+particle_colour = Color(0.62, 0.45, 0.26, 1)
+spawn_terrains = Array[int]([2, 3])
+spawn_chance = 0.03

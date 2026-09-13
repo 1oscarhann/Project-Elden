@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="HarvestableData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/harvestable_data.gd" id="script_data"]
+[ext_resource type="Script" path="res://scripts/world/harvest_drop.gd" id="script_drop"]
+[ext_resource type="Texture2D" uid="uid://dmofloci2vike" path="res://assets/trees/Fruit_tree1.png" id="tex_full"]
+[ext_resource type="Texture2D" uid="uid://beurdpjvdqi3s" path="res://assets/trees/Broken_tree2.png" id="tex_broken"]
+
+[sub_resource type="Resource" id="drop_wood"]
+script = ExtResource("script_drop")
+item_id = "wood"
+min_count = 2
+max_count = 3
+
+[sub_resource type="Resource" id="drop_fruit"]
+script = ExtResource("script_drop")
+item_id = "fruit"
+min_count = 1
+max_count = 3
+
+[resource]
+script = ExtResource("script_data")
+id = "tree_fruit"
+display_name = "Fruit Tree"
+sprite = ExtResource("tex_full")
+harvested_sprite = ExtResource("tex_broken")
+growth_stages = Array[Texture2D]([])
+drops = Array[HarvestDrop]([SubResource("drop_wood"), SubResource("drop_fruit")])
+hits_required = 4
+regrow_seconds = 140.0
+blocks_movement = true
+sprite_scale = 0.55
+particle_colour = Color(0.78, 0.32, 0.35, 1)
+spawn_terrains = Array[int]([3, 4])
+spawn_chance = 0.015

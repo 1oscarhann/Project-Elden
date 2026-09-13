@@ -1,8 +1,9 @@
-[gd_resource type="SpriteFrames" load_steps=108 format=3]
+[gd_resource type="SpriteFrames" load_steps=141 format=3]
 
 [ext_resource type="Texture2D" uid="uid://6k18l71j7yg2" path="res://assets/characters/Unarmed_Idle_without_shadow.png" id="tex_idle"]
 [ext_resource type="Texture2D" uid="uid://bagih3vyhlibl" path="res://assets/characters/Unarmed_Run_without_shadow.png" id="tex_run"]
 [ext_resource type="Texture2D" uid="uid://2qq4udtoosh6" path="res://assets/characters/Unarmed_Walk_without_shadow.png" id="tex_walk"]
+[ext_resource type="Texture2D" uid="uid://cvlv4a0wbb3wd" path="res://assets/characters/Sword_attack_without_shadow.png" id="tex_chop"]
 
 [sub_resource type="AtlasTexture" id="at_idle_down_0"]
 atlas = ExtResource("tex_idle")
@@ -420,6 +421,134 @@ region = Rect2(256, 192, 64, 64)
 atlas = ExtResource("tex_walk")
 region = Rect2(320, 192, 64, 64)
 
+[sub_resource type="AtlasTexture" id="at_chop_down_0"]
+atlas = ExtResource("tex_chop")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_1"]
+atlas = ExtResource("tex_chop")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_2"]
+atlas = ExtResource("tex_chop")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_3"]
+atlas = ExtResource("tex_chop")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_4"]
+atlas = ExtResource("tex_chop")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_5"]
+atlas = ExtResource("tex_chop")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_6"]
+atlas = ExtResource("tex_chop")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_down_7"]
+atlas = ExtResource("tex_chop")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_0"]
+atlas = ExtResource("tex_chop")
+region = Rect2(0, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_1"]
+atlas = ExtResource("tex_chop")
+region = Rect2(64, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_2"]
+atlas = ExtResource("tex_chop")
+region = Rect2(128, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_3"]
+atlas = ExtResource("tex_chop")
+region = Rect2(192, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_4"]
+atlas = ExtResource("tex_chop")
+region = Rect2(256, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_5"]
+atlas = ExtResource("tex_chop")
+region = Rect2(320, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_6"]
+atlas = ExtResource("tex_chop")
+region = Rect2(384, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_left_7"]
+atlas = ExtResource("tex_chop")
+region = Rect2(448, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_0"]
+atlas = ExtResource("tex_chop")
+region = Rect2(0, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_1"]
+atlas = ExtResource("tex_chop")
+region = Rect2(64, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_2"]
+atlas = ExtResource("tex_chop")
+region = Rect2(128, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_3"]
+atlas = ExtResource("tex_chop")
+region = Rect2(192, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_4"]
+atlas = ExtResource("tex_chop")
+region = Rect2(256, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_5"]
+atlas = ExtResource("tex_chop")
+region = Rect2(320, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_6"]
+atlas = ExtResource("tex_chop")
+region = Rect2(384, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_right_7"]
+atlas = ExtResource("tex_chop")
+region = Rect2(448, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_0"]
+atlas = ExtResource("tex_chop")
+region = Rect2(0, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_1"]
+atlas = ExtResource("tex_chop")
+region = Rect2(64, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_2"]
+atlas = ExtResource("tex_chop")
+region = Rect2(128, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_3"]
+atlas = ExtResource("tex_chop")
+region = Rect2(192, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_4"]
+atlas = ExtResource("tex_chop")
+region = Rect2(256, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_5"]
+atlas = ExtResource("tex_chop")
+region = Rect2(320, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_6"]
+atlas = ExtResource("tex_chop")
+region = Rect2(384, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="at_chop_up_7"]
+atlas = ExtResource("tex_chop")
+region = Rect2(448, 192, 64, 64)
+
 [resource]
 animations = [{
 "frames": [{
@@ -793,4 +922,120 @@ animations = [{
 "loop": true,
 "name": &"walk_up",
 "speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_chop_down_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_down_7")
+}],
+"loop": false,
+"name": &"chop_down",
+"speed": 14.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_chop_left_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_left_7")
+}],
+"loop": false,
+"name": &"chop_left",
+"speed": 14.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_chop_right_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_right_7")
+}],
+"loop": false,
+"name": &"chop_right",
+"speed": 14.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_chop_up_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_chop_up_7")
+}],
+"loop": false,
+"name": &"chop_up",
+"speed": 14.0
 }]
