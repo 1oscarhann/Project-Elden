@@ -97,14 +97,49 @@ func generate() -> Array:
 			row[x] = _elevation_at(elevation, Vector2(x + 0.5, y + 0.5), centre, max_radius)
 		height.append(row)
 
-	# 2. How far each land cell is from open water, which is what makes a beach.
-	var to_water := _distance_to_water(height)
+	# 2. The land mask, OPENED so every land cell sits in a full 2x2 block of
+	# land. See _open_2x2 — this is the shape the tileset can actually draw,
+	# and it has to happen before the beach is measured or the beach ring would
+	# be computed against a coastline that is about to change.
+	var land: Array = []
+	for y in map_size.y:
+		var row := PackedByteArray()
+		row.resize(map_size.x)
+		var heights: PackedFloat32Array = height[y]
+		for x in map_size.x:
+			row[x] = 1 if heights[x] >= land_level else 0
+		land.append(row)
+	_open_2x2(land)
 
-	# 3. Woodland mask. ⚠️ It has to know about the beach BEFORE it is cleaned
+	# 3. How far each land cell is from open water, which is what makes a beach.
+	var to_water := _distance_to_water(land)
+
+	# 4. Woodland mask. ⚠️ It has to know about the beach BEFORE it is cleaned
 	# up: the beach ring cuts through the mask, so a filter run on the raw mask
 	# sees two big groves where the finished map has thirteen fragments, and
 	# dutifully drops none of the specks the slicing created.
-	var forest := _forest_mask(cover, height, to_water)
+	var forest := _forest_mask(cover, land, to_water)
+
+	# 5. The two inner masks get the same treatment, outermost first. Each is a
+	# separate TileMapLayer painted against emptiness, so each has to satisfy
+	# the 2x2 rule in its own right — a grass region one cell wide is just as
+	# undrawable as a one-cell island.
+	var inland: Array = []
+	for y in map_size.y:
+		var row := PackedByteArray()
+		row.resize(map_size.x)
+		for x in map_size.x:
+			row[x] = 1 if int(land[y][x]) == 1 and int(to_water[y][x]) > beach_width else 0
+		inland.append(row)
+	_open_2x2(inland)
+
+	# Woodland can only be where grass is, so re-mask it before opening it:
+	# opening the inland mask may just have turned some of it into beach.
+	for y in map_size.y:
+		for x in map_size.x:
+			if int(inland[y][x]) == 0:
+				forest[y][x] = 0
+	_open_2x2(forest)
 
 	var grid: Array = []
 	for y in map_size.y:
@@ -112,14 +147,14 @@ func generate() -> Array:
 		row.resize(map_size.x)
 		var heights: PackedFloat32Array = height[y]
 		for x in map_size.x:
-			var elevation_here := heights[x]
-			if elevation_here < shallow_level:
-				row[x] = Terrain.DEEP_WATER
-			elif elevation_here < land_level:
-				row[x] = Terrain.SHALLOW_WATER
-			elif to_water[y][x] <= beach_width:
+			if int(land[y][x]) == 0:
+				# Depth is still classified, but nothing draws it differently —
+				# the pack has no deep-to-shallow transition art.
+				row[x] = Terrain.DEEP_WATER if heights[x] < shallow_level \
+					else Terrain.SHALLOW_WATER
+			elif int(inland[y][x]) == 0:
 				row[x] = Terrain.SAND
-			elif forest[y][x] == 1:
+			elif int(forest[y][x]) == 1:
 				row[x] = Terrain.FOREST
 			else:
 				row[x] = Terrain.GRASS
@@ -127,18 +162,75 @@ func generate() -> Array:
 	return grid
 
 
+## Morphological opening with a 2x2 structuring element, run to a fixed point.
+## Clears any cell of `mask` that does not belong to at least one full 2x2 block
+## of set cells, and returns how many it cleared.
+##
+## ⚠️ This is not cosmetic tidying — it is what makes the mask DRAWABLE.
+##
+## The tileset is a 16-signature corner-match blob set: a tile shows terrain in
+## whichever of its four corners are set, and a corner is set only when all four
+## cells meeting at that corner are the same terrain. So a cell that is in no
+## 2x2 block has no corner set at all, its required signature is 0000, and there
+## is simply no tile for it — bits == 0 is a blank cell in the sheet. Godot then
+## substitutes the closest match, which is a single rounded wedge, and a
+## one-tile-wide spit renders as a chain of disconnected nubs while a lone cell
+## renders as one corner of a blob floating on its own.
+##
+## Measured on the shipped island before this existed: 38 wrong tiles on sand
+## and 26 on grass, of which 3 were lone cells and 40 were one cell wide.
+##
+## It has to iterate: clearing a cell can leave its neighbour in no 2x2 block
+## either, so one pass fixes the strip's middle and leaves new nubs at its ends.
+func _open_2x2(mask: Array) -> int:
+	var cleared := 0
+	while true:
+		var doomed: Array[Vector2i] = []
+		for y in map_size.y:
+			for x in map_size.x:
+				if int(mask[y][x]) == 0:
+					continue
+				if not _in_2x2_block(mask, x, y):
+					doomed.append(Vector2i(x, y))
+		if doomed.is_empty():
+			break
+		for c in doomed:
+			mask[c.y][c.x] = 0
+		cleared += doomed.size()
+	return cleared
+
+
+## True when (x, y) is part of any of the four 2x2 blocks that contain it.
+func _in_2x2_block(mask: Array, x: int, y: int) -> bool:
+	for oy in [-1, 0]:
+		for ox in [-1, 0]:
+			var solid := true
+			for dy in 2:
+				for dx in 2:
+					var nx: int = x + ox + dx
+					var ny: int = y + oy + dy
+					if nx < 0 or ny < 0 or nx >= map_size.x or ny >= map_size.y \
+							or int(mask[ny][nx]) == 0:
+						solid = false
+						break
+				if not solid:
+					break
+			if solid:
+				return true
+	return false
+
+
 ## Woodland mask, thresholded then majority-filtered. The filter is the point:
 ## raw thresholded noise leaves lone cells and one-tile spits, and there is no
 ## tile in any autotile set that draws those as anything but a hard rectangle.
-func _forest_mask(cover: FastNoiseLite, height: Array, to_water: Array) -> Array:
+func _forest_mask(cover: FastNoiseLite, land: Array, to_water: Array) -> Array:
 	# Only cells that can actually END UP woodland: dry land, past the beach.
 	var eligible: Array = []
 	for y in map_size.y:
 		var row := PackedByteArray()
 		row.resize(map_size.x)
-		var heights: PackedFloat32Array = height[y]
 		for x in map_size.x:
-			var ok: bool = heights[x] >= land_level and int(to_water[y][x]) > beach_width
+			var ok: bool = int(land[y][x]) == 1 and int(to_water[y][x]) > beach_width
 			row[x] = 1 if ok else 0
 		eligible.append(row)
 
@@ -215,16 +307,15 @@ func _drop_small_regions(mask: Array) -> Array:
 
 ## Breadth-first distance from every land cell to the nearest water cell,
 ## capped — we only care about the first few rings.
-func _distance_to_water(height: Array) -> Array:
+func _distance_to_water(land: Array) -> Array:
 	var limit: int = beach_width + 1
 	var dist: Array = []
 	var frontier: Array[Vector2i] = []
 	for y in map_size.y:
 		var row := PackedByteArray()
 		row.resize(map_size.x)
-		var heights: PackedFloat32Array = height[y]
 		for x in map_size.x:
-			if heights[x] < land_level:
+			if int(land[y][x]) == 0:
 				row[x] = 0
 				frontier.append(Vector2i(x, y))
 			else:

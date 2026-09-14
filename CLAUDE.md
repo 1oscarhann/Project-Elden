@@ -190,7 +190,7 @@ data or packaging, not new systems.
   shown vs hidden, same night frame, away from the fire so its glow is not the variable):
   **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
   at the screenshot, I was about to call them invisible a second time and they are not.
-- **Regression is 172 checks.** Phase 10 adds 36, including a full save round-trip (bag, clock,
+- **Regression is 178 checks.** Phase 10 adds 36, including a full save round-trip (bag, clock,
   warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
   wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
   ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
@@ -202,14 +202,65 @@ data or packaging, not new systems.
   save → trash → load → pause. The before/after-load pair is the proof: the session is
   deliberately trashed between them, so an unchanged shot would be a failure, not a pass.
 
+### ⚠️ Corners and edges: the ACTUAL root cause (2x2 drawability)
+
+This is the one that was really wrong, found by testing the tiling on **controlled shapes**
+instead of on the noisy island.
+
+- **The rule the art imposes:** the sheets are a 16-signature **corner-match blob set**. A tile
+  shows terrain in whichever of its four corners are set, and a corner is set only when **all four
+  cells meeting at that corner are the same terrain**. So a region is drawable only if
+  **every cell of it belongs to at least one full 2x2 block of its own terrain**.
+- **A cell in no 2x2 block has required signature `0000`, and there is no such tile** — `bits == 0`
+  is a blank cell in the sheet. Godot does not fail on an unmatched signature, it **silently
+  substitutes the nearest one**, which is a single rounded wedge. That is why a one-tile-wide
+  strip rendered as a chain of disconnected nubs, a lone cell as one corner of a blob floating on
+  its own, and a diagonal as a staircase of hard squares.
+- **Measured on the shipped island before the fix:** **38 wrong tiles on Sand, 26 on Grass**, of
+  which **3 lone cells and 40 one cell wide**. Woodland was clean, but only by luck —
+  `min_grove_cells` filters region *area*, and a 10-cell grove can be a 1x10 strip.
+- **Fix: `IslandGenerator._open_2x2()`** — morphological opening with a 2x2 structuring element,
+  run to a fixed point, applied to each of the three nested masks in order: **land** (failures
+  become water), **inland = grass∪forest** (failures become sand), **forest** (failures become
+  grass). It must iterate: clearing a cell can leave its neighbour in no 2x2 block either, so one
+  pass fixes a strip's middle and leaves fresh nubs at its ends.
+- **Ordering is load-bearing.** The land mask is opened **before** the beach is measured, or the
+  beach ring would be computed against a coastline that is about to change. The woodland mask is
+  **re-masked against the opened inland mask** before being opened itself.
+- **Cost: 29 land cells of 3889 (0.75%) and 14 grass cells.** The island silhouette is unchanged
+  to the eye; what disappears is one-tile spits, which looked like errors anyway.
+- **Verified:** 0 wrong tiles and 0 undrawable cells on all three layers, asserted permanently
+  (6 checks). And `tools/terrain_seed_sweep.gd` runs **25 different seeds** — 0 undrawable cells —
+  so it is a property of the generator, not of one island.
+- **`tools/tile_shape_shots.gd`** renders the proof: blob / strip / lone / diagonal, raw on top
+  and opened underneath. The blob is identical in both rows; the other three vanish, because the
+  tileset genuinely cannot draw them.
+
+#### ⚠️ Why the earlier "fill tiles at boundaries" investigation found nothing
+
+It asked **the wrong question**, and got a correct answer to it. "Is a FILL tile sitting at a
+boundary" is structurally impossible in corner-match mode and always returns 0 — a foreign
+neighbour shares two of a cell's corners, so those bits cannot be set. The right question is
+**"does the tile Godot placed exactly match the signature the region requires?"**, because an
+unmatchable signature is substituted, not rejected. `_check_drawable()` in the regression asks
+that one now. Keep asking it.
+
+#### ⚠️ A parse error in the regression HANGS it, it does not fail it
+
+A duplicate local (`seen`) failed the script load, the scene never reached `quit()`, and the run
+sat there until the shell timeout killed it at 550s. An empty log plus a timeout means **look for
+a parse error first**, not a slow check.
+
 ### ⚠️ Fill tiles at boundaries: checked, and it is NOT what happens
 
 A review suspected the generator was placing FILL (all-corners) tiles at boundary positions
 because the peering bits were mis-wired. Scanned the whole island: **0 fill tiles at a boundary**
-on all three layers (Sand 3889 cells, Grass 3028, Woodland 1027). It is structurally impossible
-in corner-match mode — a foreign neighbour shares two of a cell's corners, so those bits cannot
-be set and a fill tile is unselectable there. **The regression now asserts it permanently**, so
-the question never has to be re-litigated.
+on all three layers. It is structurally impossible in corner-match mode — a foreign neighbour
+shares two of a cell's corners, so those bits cannot be set and a fill tile is unselectable there.
+
+**⚠️ True, but it was the wrong question** — see the 2x2 drawability section above, which is where
+the real corner/edge bug was. Both checks are in the regression; the drawability one is the one
+that catches things.
 
 - **What WAS still making straight runs look ruled:** Godot picks uniformly among equally-good
   matches, and a straight-edge position had **2 flat originals + 3 generated wavy** candidates —
@@ -601,7 +652,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-172 checks across every phase built so far; exits non-zero on failure. It exists because a
+178 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

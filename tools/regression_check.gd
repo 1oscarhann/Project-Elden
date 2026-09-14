@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 172
+const EXPECTED_CHECKS := 178
 
 var f := 0
 var fails := 0
@@ -221,31 +221,46 @@ func _phase2() -> void:
 		and mat.shader.resource_path.ends_with("water_shimmer.gdshader"),
 		"the sea carries the shimmer shader")
 
+	_check_drawable(world.get_node("Sand").tile_set)
+
 	# ⚠️ Structural, not cosmetic: sand is a distance from water, so an inland
 	# beach is impossible by construction rather than by tuning. This check is
 	# what stops anyone quietly turning it back into an elevation band.
-	var inland := 0
-	var deepest := 0
+	#
+	# Stated as CONNECTIVITY, not as a radius. The radius version asserted every
+	# sand cell was within beach_width of water, and broke the moment the 2x2
+	# opening started pinching one-cell grass necks out into sand — which makes
+	# the beach locally three thick and is perfectly coastal. What actually
+	# matters is that no patch of sand is marooned inland, and that is exactly
+	# "every sand region touches the sea".
+	var sand_regions := 0
+	var marooned := 0
+	var sand_seen := {}
 	for y in world.generator.map_size.y:
 		for x in world.generator.map_size.x:
-			if world.terrain_at(Vector2i(x, y)) != IslandGenerator.Terrain.SAND:
+			var start := Vector2i(x, y)
+			if sand_seen.has(start) or world.terrain_at(start) != IslandGenerator.Terrain.SAND:
 				continue
-			var found := 0
-			for radius in range(1, world.generator.beach_width + 2):
-				for dy in range(-radius, radius + 1):
-					for dx in range(-radius, radius + 1):
-						if maxi(absi(dx), absi(dy)) != radius:
-							continue
-						if world.terrain_at(Vector2i(x + dx, y + dy)) < IslandGenerator.Terrain.SAND:
-							found = radius
-							break
-					if found > 0: break
-				if found > 0: break
-			deepest = maxi(deepest, found)
-			if found == 0 or found > world.generator.beach_width:
-				inland += 1
-	ck(inland == 0, "no sand cell sits inland — beaches are coastal by construction",
-		"%d inland, deepest %d of %d allowed" % [inland, deepest, world.generator.beach_width])
+			sand_regions += 1
+			var queue: Array[Vector2i] = [start]
+			sand_seen[start] = true
+			var touches_sea := false
+			while not queue.is_empty():
+				var c: Vector2i = queue.pop_back()
+				for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var n: Vector2i = c + offset
+					var t := world.terrain_at(n)
+					if t < IslandGenerator.Terrain.SAND:
+						touches_sea = true
+						continue
+					if t != IslandGenerator.Terrain.SAND or sand_seen.has(n):
+						continue
+					sand_seen[n] = true
+					queue.append(n)
+			if not touches_sea:
+				marooned += 1
+	ck(marooned == 0, "no sand cell sits inland — beaches are coastal by construction",
+		"%d sand regions, %d marooned" % [sand_regions, marooned])
 
 	# And woodland must be regions, not speckle: a one-tile grove has no edge
 	# for a tile to draw, only corners, which is what reads as a hard square.
@@ -706,6 +721,82 @@ func _free_cells_near(centre: Vector2i, radius: int) -> Array:
 					continue  # Only the ring just added.
 				out.append(centre + Vector2i(dx, dy))
 	return out
+
+
+## The corner signature a cell REQUIRES: a corner is filled only when all four
+## cells meeting at it are in the region. That is the marching-squares semantic
+## the blob sheets are drawn for, and it is what makes a one-cell-wide region
+## undrawable — no corner qualifies, so the required signature is 0000 and the
+## sheet has no such tile.
+func _required_bits(cell: Vector2i, region: Dictionary) -> int:
+	var bits := 0
+	# Order matches build_tileset.gd's CORNERS: TL, TR, BL, BR.
+	var quads := [
+		[Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)],
+		[Vector2i(0, -1), Vector2i(1, -1), Vector2i(0, 0), Vector2i(1, 0)],
+		[Vector2i(-1, 0), Vector2i(0, 0), Vector2i(-1, 1), Vector2i(0, 1)],
+		[Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
+	]
+	for i in 4:
+		var all_in := true
+		for d in quads[i]:
+			if not region.has(cell + d):
+				all_in = false
+				break
+		if all_in:
+			bits |= 1 << i
+	return bits
+
+
+## The signature of the tile Godot actually placed.
+func _placed_bits(ts: TileSet, layer: TileMapLayer, cell: Vector2i) -> int:
+	var src_id := layer.get_cell_source_id(cell)
+	if src_id == -1:
+		return -1
+	var src := ts.get_source(src_id) as TileSetAtlasSource
+	var data := src.get_tile_data(layer.get_cell_atlas_coords(cell), 0)
+	var bits := 0
+	var corners := [TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER, TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
+		TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER, TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER]
+	for i in 4:
+		if data.get_terrain_peering_bit(corners[i]) != -1:
+			bits |= 1 << i
+	return bits
+
+
+## ⚠️ THE check for whether corners and edges are right.
+##
+## "Is there a fill tile at a boundary" was the wrong question and always came
+## back clean. The right one is whether the tile Godot placed EXACTLY matches
+## the signature the region requires — because when no tile matches, Godot does
+## not fail, it silently substitutes the nearest one. That is what a one-wide
+## spit or a lone cell hits: required signature 0000, no such tile, so it comes
+## out as a disconnected rounded nub.
+##
+## Measured before the generator opened its masks: 38 wrong on sand, 26 on
+## grass, 3 lone cells and 40 one cell wide.
+func _check_drawable(ts: TileSet) -> void:
+	for layer_name in ["Sand", "Grass", "Woodland"]:
+		var layer: TileMapLayer = world.get_node(layer_name)
+		var region := {}
+		for c in layer.get_used_cells():
+			region[c] = true
+		var wrong := 0
+		var undrawable := 0
+		var first := ""
+		for cell in layer.get_used_cells():
+			var want := _required_bits(cell, region)
+			if want == 0:
+				undrawable += 1
+			if want == _placed_bits(ts, layer, cell):
+				continue
+			wrong += 1
+			if first.is_empty():
+				first = " first %s wants %d" % [cell, want]
+		ck(wrong == 0, "%s: every tile matches the signature its shape requires" % layer_name,
+			"%d cells, %d wrong%s" % [region.size(), wrong, first])
+		ck(undrawable == 0, "%s: no cell is outside every 2x2 block of its own terrain" % layer_name,
+			"%d such cells" % undrawable)
 
 
 func _phase10() -> void:
