@@ -17,6 +17,11 @@ phase until the previous one runs and I've confirmed it. Tick boxes as we go.
 | 9 | Passive animals + hunting | `phase09_animals.md` | ☑ |
 | 10 | Save/load + polish pass | `phase10_polish.md` | ☑ |
 
+**PROJECT v1 COMPLETE.** All ten phases are built, runnable and covered by the regression suite
+(184 checks). What remains is not new systems: ship a desktop export, test the web export, write
+the itch.io page, and then content — more recipes, more islands, seasons — all of which is data
+files, not code.
+
 ## Dependency notes
 - Phase 6 (Inventory) is a soft prerequisite for 5, 7, 9 to be *meaningful*, but 5 can drop
   items into a placeholder inventory first. If you'd rather, swap 5 and 6 — your call at the time.

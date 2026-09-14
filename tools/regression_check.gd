@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 178
+const EXPECTED_CHECKS := 184
 
 var f := 0
 var fails := 0
@@ -986,7 +986,39 @@ func _phase10() -> void:
 	ck(main.get_node_or_null("HUD/Toast") != null, "the HUD has a day toast")
 	ck(player.get_node_or_null("Dust") != null, "the player kicks up dust")
 	ck(player.get_node_or_null("Camera2D/Fireflies") != null, "fireflies follow the camera")
+	ck(player.get_node_or_null("Camera2D/Leaves") != null, "leaves drift on the wind")
 	ck(fire.get_node_or_null("Crackle") != null, "the campfire crackles")
+	ck(fire.get_node_or_null("Smoke") != null, "and smokes")
+
+	# ⚠️ The spec's "no jitter when the camera moves; snap camera to pixels".
+	# Measured before the camera was rewritten: the view centre was off a whole
+	# pixel on 99.6% of frames, worst remainder 0.5px. With 2d transform
+	# snapping on, that makes neighbouring tiles round their screen position
+	# different ways on different frames — the shimmer along tile seams.
+	var cam := player.get_node("Camera2D") as PlayerCamera
+	ck(cam.top_level and not cam.position_smoothing_enabled,
+		"the camera follows on its own, not on Godot's smoothing",
+		"top_level=%s godot_smoothing=%s" % [cam.top_level, cam.position_smoothing_enabled])
+	var worst := Vector2.ZERO
+	for i in 30:
+		# Nudge the player by a deliberately awkward fraction each step, so the
+		# camera is chasing a target that is never on a pixel itself.
+		player.global_position += Vector2(1.37, 0.61)
+		cam._process(0.016)
+		worst = worst.max(cam.pixel_error())
+	ck(worst == Vector2.ZERO, "and lands on whole pixels while it moves",
+		"worst remainder %.3f px" % maxf(worst.x, worst.y))
+
+	# The flight needs somewhere to fly TO, and the feed asks by group rather
+	# than by path, so a renamed hotbar node must not silently break it.
+	var bars := get_tree().get_nodes_in_group("hotbar")
+	ck(not bars.is_empty(), "the hotbar is reachable by group for the pickup flight")
+	if not bars.is_empty():
+		Inventory.clear()
+		Inventory.add_item("wood", 1)
+		ck(bars[0].slot_centre(0) != Vector2.ZERO,
+			"and reports where a slot is on screen", str(bars[0].slot_centre(0)))
+		Inventory.clear()
 
 	# Put the world back the way phase 9b expects to find it.
 	SaveManager.apply_data(baseline)

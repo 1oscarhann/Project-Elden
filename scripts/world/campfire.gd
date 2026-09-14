@@ -48,6 +48,9 @@ const STAGES: Array = [[0.60, "high"], [0.30, "medium"], [0.10, "low"], [0.0, "e
 ## Positional, so the crackle fades in as you walk up to the fire and is the
 ## cue that tells you where it is at night without looking.
 @onready var _crackle: AudioStreamPlayer2D = $Crackle
+## Drawn BEHIND the flame (z_index -1) so it reads as rising from the back of
+## the fire rather than sitting in front of it.
+@onready var _smoke: CPUParticles2D = $Smoke
 
 var fuel := 0.0
 ## Multiplier tweened by the flare; kept separate so the per-frame size update
@@ -181,6 +184,12 @@ func _update_visuals() -> void:
 		_flame.play(stage)
 	# Size and light both track fuel, so a dying fire visibly shrinks.
 	_flame.scale = Vector2.ONE * (lerpf(0.72, 1.05, ratio) * _flare)
+	# Smoke tracks it too: a roaring fire smokes, embers barely do. Thinned by
+	# alpha rather than by particle count — `amount` on a CPUParticles2D
+	# reallocates the system and pops every live particle, and `amount_ratio`
+	# is a GPUParticles2D property that does not exist here at all.
+	_smoke.emitting = true
+	_smoke.self_modulate.a = lerpf(0.4, 1.0, ratio)
 	# Scale by darkness too, or the fire casts a spotlight at midday.
 	_light.energy = lerpf(0.35, 1.25, ratio) * _flare * lerpf(day_light_floor, 1.0, DayNight.darkness())
 	_light.texture_scale = lerpf(0.45, 1.0, ratio)
@@ -189,6 +198,8 @@ func _update_visuals() -> void:
 ## A dead fire still leaves cold coals. Without this the pit vanishes entirely
 ## at night and the player cannot find the thing they need to relight.
 func _show_embers() -> void:
+	# Cold coals do not smoke.
+	_smoke.emitting = false
 	if _stage != "ember":
 		_stage = "ember"
 		_flame.play("ember")

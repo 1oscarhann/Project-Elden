@@ -103,9 +103,10 @@ func _process(delta: float) -> void:
 			wait = 0.3
 		5:
 			shot("p10_day")
-			# The pickup floater, caught mid-rise rather than at either end.
+			# The pickup floater and the icon's flight to the hotbar, caught
+			# mid-air rather than at either end of either animation.
 			Inventory.add_item("berries", 3)
-			wait = 0.25
+			wait = 0.18
 		6:
 			shot("p10_pickup_text")
 			# Day toast.
@@ -113,6 +114,14 @@ func _process(delta: float) -> void:
 			wait = 0.6
 		7:
 			shot("p10_day_toast")
+			# Smoke needs a lit fire and daylight behind it to be visible at
+			# all; at night the glow washes it out.
+			fire.set_fuel(95.0)
+			player.global_position = fire.global_position + Vector2(26, 24)
+			get_tree().call_group(PlayerCamera.GROUP, "snap_to_target")
+			wait = 2.5
+		8:
+			shot("p10_smoke_leaves")
 			# Night: fireflies, the fire's light, the crackle you cannot see.
 			_set_time(0.88, 4)
 			fire.set_fuel(70.0)
@@ -120,14 +129,14 @@ func _process(delta: float) -> void:
 			get_tree().call_group(PlayerCamera.GROUP, "snap_to_target")
 			# Fireflies fade in over a couple of seconds by design.
 			wait = 3.0
-		8:
+		9:
 			shot("p10_night_fireflies")
 			# Cold: the blue vignette and the shiver, away from the fire.
 			player.global_position = fire.global_position + Vector2(220, 60)
 			get_tree().call_group(PlayerCamera.GROUP, "snap_to_target")
 			GameState.set_warmth(6.0)
 			wait = 0.4
-		9:
+		10:
 			shot("p10_cold")
 			# Save, then prove the load actually restores it: trash the session
 			# first so an unchanged shot would be a failed test, not a pass.
@@ -136,12 +145,12 @@ func _process(delta: float) -> void:
 			GameState.set_warmth(100.0)
 			_set_time(0.45, 99)
 			wait = 0.3
-		10:
+		11:
 			shot("p10_before_load")
 			SaveManager.apply_data(SaveManager.read_save(SLOT))
 			get_tree().call_group(PlayerCamera.GROUP, "snap_to_target")
 			wait = 0.4
-		11:
+		12:
 			shot("p10_after_load")
 			SaveManager.delete_save(SLOT)
 			# Pause menu last: it stops the tree, so nothing else can run after.
@@ -149,14 +158,14 @@ func _process(delta: float) -> void:
 			GameState.set_warmth(72.0)
 			game.get_node("PauseMenu").set_open(true)
 			wait = 0.3
-		12:
+		13:
 			shot("p10_pause")
 			game.get_node("PauseMenu/SettingsPanel").open()
 			wait = 0.3
-		13:
+		14:
 			shot("p10_pause_settings")
 			wait = 0.1
-		14:
+		15:
 			get_tree().paused = false
 			Audio.stop_world_audio()
 			print("phase10 shots done")

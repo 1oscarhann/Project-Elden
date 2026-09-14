@@ -106,9 +106,9 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 10 complete — the ten-phase plan is done.** What is left is content and a build:
-more recipes, more islands, seasons, a desktop/web export and an itch.io page. All of that is
-data or packaging, not new systems.
+**PROJECT v1 COMPLETE — all ten phases built, 184 regression checks green.** What is left is
+content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
+page. All of that is data or packaging, not new systems.
 
 ### Phase 10 notes
 
@@ -176,7 +176,8 @@ data or packaging, not new systems.
   still running when the tree is torn down keeps its stream alive past cleanup. The suite now
   silences everything in `_finish()`. Six bogus leaks in the output is exactly how a real one
   would go unnoticed.
-- **Polish, all of it wired to existing signals rather than new plumbing:**
+- **Polish, all of it wired to existing signals rather than new plumbing** (the second pass
+  above adds the four items this first one missed):
   floating `+3 Berries` labels **parented to the player** so they travel with them (a screen-space
   label visibly slides off while you run) · footstep dust and sound **driven by distance, not a
   timer**, so they stay in step whether walking, running or slowed by cold · a horizontal shiver
@@ -190,7 +191,7 @@ data or packaging, not new systems.
   shown vs hidden, same night frame, away from the fire so its glow is not the variable):
   **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
   at the screenshot, I was about to call them invisible a second time and they are not.
-- **Regression is 178 checks.** Phase 10 adds 36, including a full save round-trip (bag, clock,
+- **Regression is 184 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
   warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
   wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
   ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
@@ -201,6 +202,64 @@ data or packaging, not new systems.
 - **`tools/phase10_shots.gd`** walks title → settings → day → pickup → toast → night → cold →
   save → trash → load → pause. The before/after-load pair is the proof: the session is
   deliberately trashed between them, so an unchanged shot would be a failure, not a pass.
+
+### Phase 10 second pass — the four checklist items that were missed
+
+Re-read `phase10_polish.md` line by line against what was actually built. Save/load, audio,
+menus, settings, transitions, screen shake and the feedback bullet were all there. Four were not.
+
+- **⚠️ The camera was not pixel-snapped, and the spec asks for it explicitly.** Measured: the view
+  centre sat on a fractional coordinate on **99.6% of frames, worst remainder 0.5px**. With
+  `snap_2d_transforms_to_pixel` on, every sprite then rounds its own screen position
+  independently, so neighbouring tiles round different ways on different frames — the shimmer
+  along tile seams. **Now 0.0% of frames, remainder 0.000px, asserted.**
+  - **`player_camera.gd` is `top_level` and does its OWN smoothing.** It has to be: as an ordinary
+    child it inherits the player's fractional position, and Godot's `position_smoothing` then
+    lands the view on fractional coordinates too. Being top-level makes `position` world space,
+    so the smoothed value can simply be rounded before it is written.
+  - Easing is `1 - exp(-speed * delta)`, not a lerp by delta, so it is identical at any frame
+    rate — which matters because headless runs `_process` uncapped.
+  - **Shake is rounded too.** A half-pixel shake on a pixel-art game is not a subtler shake, it is
+    the same shake plus the shimmer this was all meant to remove.
+  - **⚠️ Two false starts worth not repeating.** First attempt corrected the fraction through
+    `offset` — but `get_screen_center_position()` **does not include `offset` at all** (verified:
+    setting offset to (100,50) moved the reported centre by (0,0)), so the correction was computed
+    against a base it could never move and the figure stayed at 99.2%. Second attempt tried to
+    verify `offset`'s sign by correlating two rendered frames, which failed because the water
+    shader, the animals and the smoothing all move between frames as well. Driving the position
+    directly is both simpler and actually measurable.
+- **Fly-to-hotbar pickups.** The floating `+3 Berries` text was the *Feedback* bullet; the
+  *Tweens* bullet asks for the item to fly into the bar, which is a different thing. The icon now
+  arcs from the player into **the slot the item actually landed in** — looked up after the gain,
+  not guessed — and the slot pops as it arrives. An item that stacked further back in the bag gets
+  no flight at all, because an icon sailing into a corner would be a lie about where it went.
+  The feed asks for the slot position **by group**, so it holds no path to the hotbar.
+- **Campfire smoke**, drawn behind the flame (`z_index = -1`) so it rises from the back of the
+  fire rather than in front of it, and thinned with the fuel: a roaring fire smokes, cold coals do
+  not smoke at all.
+- **Leaves on the wind**, parented under the camera like the fireflies, with the wind a slow
+  38-second oscillation rather than a constant so the drift changes direction and the screen never
+  looks like it is on rails. They fade back at night when the fireflies take over.
+- **Measured by frame diff, the same way the fireflies were:** smoke **0.41% of the screen, peak
+  delta 218/255**; leaves **0.65%, peak 227/255**. Both subtle on a still frame and both real,
+  which is what an ambient effect should be.
+- **⚠️ `amount_ratio` is a GPUParticles2D property and does not exist on CPUParticles2D.** Used it
+  on both new emitters; it threw a runtime error every single frame. And **do not reach for
+  `amount` instead** — assigning it reallocates the system and pops every live particle. Fade with
+  `self_modulate.a`, which is free and continuous.
+- **⚠️ A runtime SCRIPT ERROR does NOT fail the regression suite.** All 184 checks went green
+  while those particle errors fired every frame, because the checks asserted the nodes existed,
+  not that their scripts ran. Grep the run:
+
+      godot --headless --path . res://tools/regression_check.tscn 2>&1 | tee /tmp/reg.log
+      grep -c "SCRIPT ERROR" /tmp/reg.log   # must be 0
+
+- **Spec deviations, flagged not improvised:** the spec says `GPUParticles2D`, but the project is
+  on the **GL Compatibility** renderer and targets web, so everything stays `CPUParticles2D` —
+  consistent with Phases 4, 5 and 9. The spec says "source cozy CC0 audio"; it is synthesised
+  instead (see the Phase 10 notes), which needs no attribution at all. Animal population in the
+  save is marked optional in the spec and is still skipped: the spawner refills to its caps on
+  load, so storing counts would change nothing.
 
 ### ⚠️ Corners and edges: the ACTUAL root cause (2x2 drawability)
 
@@ -652,7 +711,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-178 checks across every phase built so far; exits non-zero on failure. It exists because a
+184 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

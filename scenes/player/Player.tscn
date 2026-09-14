@@ -1,10 +1,11 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="script_player"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="script_camera"]
 [ext_resource type="Script" path="res://scripts/world/ambient_light.gd" id="script_light"]
 [ext_resource type="Script" path="res://scripts/player/build_mode.gd" id="script_build"]
 [ext_resource type="Script" path="res://scripts/world/fireflies.gd" id="script_flies"]
+[ext_resource type="Script" path="res://scripts/world/leaf_drift.gd" id="script_leaves"]
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="frames_player"]
 [ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
 
@@ -109,3 +110,25 @@ scale_amount_max = 0.8
 color = Color(1, 0.96, 0.62, 1)
 texture = SubResource("firefly_dot")
 script = ExtResource("script_flies")
+
+[node name="Leaves" type="CPUParticles2D" parent="Camera2D"]
+z_index = 30
+amount = 14
+lifetime = 7.0
+preprocess = 4.0
+lifetime_randomness = 0.4
+emission_shape = 3
+emission_rect_extents = Vector2(180, 110)
+direction = Vector2(1, 0.45)
+spread = 25.0
+gravity = Vector2(20, 7)
+initial_velocity_min = 4.0
+initial_velocity_max = 12.0
+angular_velocity_min = -120.0
+angular_velocity_max = 120.0
+damping_min = 0.4
+damping_max = 1.2
+scale_amount_min = 1.0
+scale_amount_max = 2.0
+color = Color(0.58, 0.72, 0.36, 0.7)
+script = ExtResource("script_leaves")
