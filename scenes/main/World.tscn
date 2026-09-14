@@ -39,10 +39,11 @@ falloff_power = 2.4
 noise_seed = 20240612
 randomize_seed = false
 shallow_level = 0.22
-sand_level = 0.3
-land_level = 0.38
+land_level = 0.3
+beach_width = 2
 forest_threshold = 0.52
-rock_threshold = 0.68
+cover_frequency = 0.026
+cover_smoothing = 3
 
 [node name="World" type="Node2D"]
 script = ExtResource("script_world")

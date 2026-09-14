@@ -108,6 +108,27 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### Biome SHAPES (the other half of the blocky-edge problem)
+
+Wavy edge tiles fixed how a boundary is *drawn*. These fix what shape the regions are in the
+first place — a tile can only describe a curve if the region has one to describe.
+
+- **⚠️ Sand is DISTANCE TO WATER now, not an elevation band.** As a band (0.30-0.38) it appeared
+  wherever terrain happened to sit in that range, so a flat inland plateau became a broad beige
+  patch in the middle of the island with nothing coastal about it. A BFS out from the water
+  (`beach_width`, default 2) guarantees beaches ring the coast and cannot appear inland.
+  `sand_level` is gone; `land_level` is now the single water/land threshold, at the same 0.30 the
+  old `sand_level` used — so the island silhouette and the 3889 land cells are unchanged.
+- **⚠️ `cover_frequency` was 0.09 — far too high.** That is a grove about 11 tiles across, and
+  thresholded it left speckle: lone cells and one-tile spits. **No autotile set can draw those
+  as anything but a hard rectangle**, which is exactly what read as "two grass shades in blocky
+  patches". Now **0.026**, so groves are large.
+- **`cover_smoothing` (3 majority-filter passes)** over the woodland mask removes what noise
+  leaves behind. Five of eight neighbours agreeing flips a cell; fewer leaves it. Large smooth
+  regions are the precondition for the edge tiles mattering at all.
+- The grass-woodland boundary was already on the terrain/bitmask system and already had the wavy
+  variants — it looked blocky purely because the *regions* were. Nothing about the tiling changed.
+
 ### Generated wavy edge tiles (closes the blocky-edge thread)
 
 - **⚠️ Every straight edge the pack ships is a FLAT 2px inset.** Measured on all eight, span 0.

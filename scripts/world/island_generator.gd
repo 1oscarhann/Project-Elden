@@ -32,15 +32,33 @@ const FIRST_WALKABLE := Terrain.SAND
 @export var randomize_seed := false
 
 @export_group("Elevation bands")
-## Elevation thresholds, low to high. Anything under shallow_level is deep water.
+## Elevation thresholds, low to high. Anything under shallow_level is deep
+## water; anything at or above land_level is dry land.
 @export_range(0.0, 1.0) var shallow_level := 0.22
-@export_range(0.0, 1.0) var sand_level := 0.30
-@export_range(0.0, 1.0) var land_level := 0.38
+@export_range(0.0, 1.0) var land_level := 0.30
+
+@export_group("Beaches")
+## ⚠️ Sand is DISTANCE TO WATER, not an elevation band.
+##
+## As a band between two elevations it appeared wherever the terrain happened
+## to sit in that range — which on a flat inland plateau meant broad beige
+## patches in the middle of the island, with nothing coastal about them.
+## Measuring out from the water instead guarantees beaches ring the coast and
+## can never appear inland.
+@export_range(1, 8) var beach_width := 2
 
 @export_group("Land cover")
 ## A second noise field thickens land into woodland in patches, so trees form
 ## groves rather than scattering evenly.
 @export_range(0.0, 1.0) var forest_threshold := 0.52
+## ⚠️ Keep this LOW. At 0.09 a grove was about 11 tiles across and speckly,
+## and speckle autotiles into hard little rectangles — there is no tile that
+## can draw a one-cell-wide region softly. Large, smooth regions are what let
+## the edge tiles actually describe a curve.
+@export_range(0.005, 0.2) var cover_frequency := 0.026
+## Majority-filter passes over the woodland mask. Removes lone cells and
+## one-tile spits, which are the shapes that read as blocky.
+@export_range(0, 6) var cover_smoothing := 3
 
 ## The seed actually used for the most recent generate() call.
 var last_seed := 0
@@ -59,22 +77,121 @@ func generate() -> Array:
 	var cover := FastNoiseLite.new()
 	cover.seed = last_seed + 1
 	cover.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	cover.frequency = 0.09
+	cover.frequency = cover_frequency
 	cover.fractal_octaves = 2
 
 	var centre := Vector2(map_size) * 0.5
 	var max_radius: float = minf(centre.x, centre.y) * island_radius
 
+	# 1. Water or land, from the shaped elevation field.
+	var height: Array = []
+	for y in map_size.y:
+		var row := PackedFloat32Array()
+		row.resize(map_size.x)
+		for x in map_size.x:
+			row[x] = _elevation_at(elevation, Vector2(x + 0.5, y + 0.5), centre, max_radius)
+		height.append(row)
+
+	# 2. Woodland mask, smoothed so groves are regions rather than speckle.
+	var forest := _forest_mask(cover, height)
+
+	# 3. How far each land cell is from open water, which is what makes a beach.
+	var to_water := _distance_to_water(height)
+
 	var grid: Array = []
 	for y in map_size.y:
 		var row := PackedByteArray()
 		row.resize(map_size.x)
+		var heights: PackedFloat32Array = height[y]
 		for x in map_size.x:
-			row[x] = _classify(
-				_elevation_at(elevation, Vector2(x + 0.5, y + 0.5), centre, max_radius),
-				_unit(cover.get_noise_2d(x, y)))
+			var elevation_here := heights[x]
+			if elevation_here < shallow_level:
+				row[x] = Terrain.DEEP_WATER
+			elif elevation_here < land_level:
+				row[x] = Terrain.SHALLOW_WATER
+			elif to_water[y][x] <= beach_width:
+				row[x] = Terrain.SAND
+			elif forest[y][x] == 1:
+				row[x] = Terrain.FOREST
+			else:
+				row[x] = Terrain.GRASS
 		grid.append(row)
 	return grid
+
+
+## Woodland mask, thresholded then majority-filtered. The filter is the point:
+## raw thresholded noise leaves lone cells and one-tile spits, and there is no
+## tile in any autotile set that draws those as anything but a hard rectangle.
+func _forest_mask(cover: FastNoiseLite, height: Array) -> Array:
+	var mask: Array = []
+	for y in map_size.y:
+		var row := PackedByteArray()
+		row.resize(map_size.x)
+		for x in map_size.x:
+			row[x] = 1 if _unit(cover.get_noise_2d(x, y)) >= forest_threshold else 0
+		mask.append(row)
+
+	for pass_index in cover_smoothing:
+		var next: Array = []
+		for y in map_size.y:
+			var row := PackedByteArray()
+			row.resize(map_size.x)
+			for x in map_size.x:
+				var neighbours := 0
+				for dy in [-1, 0, 1]:
+					for dx in [-1, 0, 1]:
+						if dx == 0 and dy == 0:
+							continue
+						var nx: int = x + dx
+						var ny: int = y + dy
+						if nx < 0 or ny < 0 or nx >= map_size.x or ny >= map_size.y:
+							continue
+						neighbours += int(mask[ny][nx])
+				# Five of eight agreeing flips the cell; anything less leaves it.
+				if neighbours >= 5:
+					row[x] = 1
+				elif neighbours <= 3:
+					row[x] = 0
+				else:
+					row[x] = mask[y][x]
+			next.append(row)
+		mask = next
+	return mask
+
+
+## Breadth-first distance from every land cell to the nearest water cell,
+## capped — we only care about the first few rings.
+func _distance_to_water(height: Array) -> Array:
+	var limit: int = beach_width + 1
+	var dist: Array = []
+	var frontier: Array[Vector2i] = []
+	for y in map_size.y:
+		var row := PackedByteArray()
+		row.resize(map_size.x)
+		var heights: PackedFloat32Array = height[y]
+		for x in map_size.x:
+			if heights[x] < land_level:
+				row[x] = 0
+				frontier.append(Vector2i(x, y))
+			else:
+				row[x] = limit
+		dist.append(row)
+
+	var step := 0
+	while step < beach_width and not frontier.is_empty():
+		step += 1
+		var next: Array[Vector2i] = []
+		for cell in frontier:
+			for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var n: Vector2i = cell + offset
+				if n.x < 0 or n.y < 0 or n.x >= map_size.x or n.y >= map_size.y:
+					continue
+				if int(dist[n.y][n.x]) <= step:
+					continue
+				dist[n.y][n.x] = step
+				next.append(n)
+		frontier = next
+	return dist
 
 
 ## Noise shaped by a radial falloff, so the landmass is always ringed by water
@@ -88,18 +205,6 @@ func _elevation_at(noise: FastNoiseLite, pos: Vector2, centre: Vector2, max_radi
 ## FastNoiseLite returns [-1, 1]; we want [0, 1].
 func _unit(n: float) -> float:
 	return (n + 1.0) * 0.5
-
-
-func _classify(elevation: float, cover: float) -> int:
-	if elevation < shallow_level:
-		return Terrain.DEEP_WATER
-	if elevation < sand_level:
-		return Terrain.SHALLOW_WATER
-	if elevation < land_level:
-		return Terrain.SAND
-	if cover >= forest_threshold:
-		return Terrain.FOREST
-	return Terrain.GRASS
 
 
 static func is_walkable(terrain: int) -> bool:
