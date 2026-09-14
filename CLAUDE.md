@@ -126,8 +126,18 @@ first place — a tile can only describe a curve if the region has one to descri
 - **`cover_smoothing` (3 majority-filter passes)** over the woodland mask removes what noise
   leaves behind. Five of eight neighbours agreeing flips a cell; fewer leaves it. Large smooth
   regions are the precondition for the edge tiles mattering at all.
+- **`min_grove_cells` (10)** dissolves woodland regions below that size back into grass. Smoothing
+  alone still left lone cells, and a one-tile grove is exactly the hard square all of this was
+  meant to stop — there is no edge for a tile to draw, only corners meeting corners.
+- **⚠️ The mask must know about the BEACH before it is cleaned up.** The beach ring cuts through
+  the woodland mask, so a filter run on the raw mask saw **2 big groves** where the finished map
+  had **13 fragments**, and dutifully dropped none of the specks the slicing created. The mask is
+  built over eligible cells only (land, past the beach) and re-masked after every smoothing pass.
 - The grass-woodland boundary was already on the terrain/bitmask system and already had the wavy
   variants — it looked blocky purely because the *regions* were. Nothing about the tiling changed.
+- **Measured on the shipped island:** sand 861 cells, **every one within 2 tiles of water**
+  (worst case == `beach_width`); woodland **8 groves, 0 under 10 cells**, spanning 7x8 up to
+  35x46 tiles. Both are asserted in the regression, so neither can silently regress.
 
 ### Generated wavy edge tiles (closes the blocky-edge thread)
 

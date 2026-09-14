@@ -44,6 +44,7 @@ beach_width = 2
 forest_threshold = 0.52
 cover_frequency = 0.026
 cover_smoothing = 3
+min_grove_cells = 10
 
 [node name="World" type="Node2D"]
 script = ExtResource("script_world")

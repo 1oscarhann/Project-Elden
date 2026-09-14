@@ -59,6 +59,11 @@ const FIRST_WALKABLE := Terrain.SAND
 ## Majority-filter passes over the woodland mask. Removes lone cells and
 ## one-tile spits, which are the shapes that read as blocky.
 @export_range(0, 6) var cover_smoothing := 3
+## ⚠️ Smoothing alone still leaves a handful of lone cells and pairs, and a
+## one-tile grove is exactly the hard little square this was all meant to stop:
+## there is no edge for a tile to draw, only corners meeting corners. Any
+## woodland region smaller than this is dissolved back into grass.
+@export_range(1, 64) var min_grove_cells := 10
 
 ## The seed actually used for the most recent generate() call.
 var last_seed := 0
@@ -92,11 +97,14 @@ func generate() -> Array:
 			row[x] = _elevation_at(elevation, Vector2(x + 0.5, y + 0.5), centre, max_radius)
 		height.append(row)
 
-	# 2. Woodland mask, smoothed so groves are regions rather than speckle.
-	var forest := _forest_mask(cover, height)
-
-	# 3. How far each land cell is from open water, which is what makes a beach.
+	# 2. How far each land cell is from open water, which is what makes a beach.
 	var to_water := _distance_to_water(height)
+
+	# 3. Woodland mask. ⚠️ It has to know about the beach BEFORE it is cleaned
+	# up: the beach ring cuts through the mask, so a filter run on the raw mask
+	# sees two big groves where the finished map has thirteen fragments, and
+	# dutifully drops none of the specks the slicing created.
+	var forest := _forest_mask(cover, height, to_water)
 
 	var grid: Array = []
 	for y in map_size.y:
@@ -122,13 +130,26 @@ func generate() -> Array:
 ## Woodland mask, thresholded then majority-filtered. The filter is the point:
 ## raw thresholded noise leaves lone cells and one-tile spits, and there is no
 ## tile in any autotile set that draws those as anything but a hard rectangle.
-func _forest_mask(cover: FastNoiseLite, height: Array) -> Array:
+func _forest_mask(cover: FastNoiseLite, height: Array, to_water: Array) -> Array:
+	# Only cells that can actually END UP woodland: dry land, past the beach.
+	var eligible: Array = []
+	for y in map_size.y:
+		var row := PackedByteArray()
+		row.resize(map_size.x)
+		var heights: PackedFloat32Array = height[y]
+		for x in map_size.x:
+			var ok: bool = heights[x] >= land_level and int(to_water[y][x]) > beach_width
+			row[x] = 1 if ok else 0
+		eligible.append(row)
+
 	var mask: Array = []
 	for y in map_size.y:
 		var row := PackedByteArray()
 		row.resize(map_size.x)
 		for x in map_size.x:
-			row[x] = 1 if _unit(cover.get_noise_2d(x, y)) >= forest_threshold else 0
+			var on: bool = int(eligible[y][x]) == 1 \
+				and _unit(cover.get_noise_2d(x, y)) >= forest_threshold
+			row[x] = 1 if on else 0
 		mask.append(row)
 
 	for pass_index in cover_smoothing:
@@ -154,8 +175,41 @@ func _forest_mask(cover: FastNoiseLite, height: Array) -> Array:
 					row[x] = 0
 				else:
 					row[x] = mask[y][x]
+				# Smoothing must never push woodland back onto the beach.
+				if int(eligible[y][x]) == 0:
+					row[x] = 0
 			next.append(row)
 		mask = next
+	return _drop_small_regions(mask)
+
+
+## Dissolves woodland regions below min_grove_cells back into grass.
+func _drop_small_regions(mask: Array) -> Array:
+	var seen := {}
+	for y in map_size.y:
+		for x in map_size.x:
+			var start := Vector2i(x, y)
+			if seen.has(start) or int(mask[y][x]) == 0:
+				continue
+			# Flood the region, remembering it, then judge it by size.
+			var queue: Array[Vector2i] = [start]
+			var region: Array[Vector2i] = []
+			seen[start] = true
+			while not queue.is_empty():
+				var c: Vector2i = queue.pop_back()
+				region.append(c)
+				for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var n: Vector2i = c + offset
+					if n.x < 0 or n.y < 0 or n.x >= map_size.x or n.y >= map_size.y:
+						continue
+					if seen.has(n) or int(mask[n.y][n.x]) == 0:
+						continue
+					seen[n] = true
+					queue.append(n)
+			if region.size() >= min_grove_cells:
+				continue
+			for c in region:
+				mask[c.y][c.x] = 0
 	return mask
 
 

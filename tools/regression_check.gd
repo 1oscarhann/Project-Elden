@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 132
+const EXPECTED_CHECKS := 134
 
 var f := 0
 var fails := 0
@@ -201,6 +201,60 @@ func _phase2() -> void:
 	ck(mat != null and mat.shader != null
 		and mat.shader.resource_path.ends_with("water_shimmer.gdshader"),
 		"the sea carries the shimmer shader")
+
+	# ⚠️ Structural, not cosmetic: sand is a distance from water, so an inland
+	# beach is impossible by construction rather than by tuning. This check is
+	# what stops anyone quietly turning it back into an elevation band.
+	var inland := 0
+	var deepest := 0
+	for y in world.generator.map_size.y:
+		for x in world.generator.map_size.x:
+			if world.terrain_at(Vector2i(x, y)) != IslandGenerator.Terrain.SAND:
+				continue
+			var found := 0
+			for radius in range(1, world.generator.beach_width + 2):
+				for dy in range(-radius, radius + 1):
+					for dx in range(-radius, radius + 1):
+						if maxi(absi(dx), absi(dy)) != radius:
+							continue
+						if world.terrain_at(Vector2i(x + dx, y + dy)) < IslandGenerator.Terrain.SAND:
+							found = radius
+							break
+					if found > 0: break
+				if found > 0: break
+			deepest = maxi(deepest, found)
+			if found == 0 or found > world.generator.beach_width:
+				inland += 1
+	ck(inland == 0, "no sand cell sits inland — beaches are coastal by construction",
+		"%d inland, deepest %d of %d allowed" % [inland, deepest, world.generator.beach_width])
+
+	# And woodland must be regions, not speckle: a one-tile grove has no edge
+	# for a tile to draw, only corners, which is what reads as a hard square.
+	var seen := {}
+	var tiny := 0
+	var groves := 0
+	for y in world.generator.map_size.y:
+		for x in world.generator.map_size.x:
+			var start := Vector2i(x, y)
+			if seen.has(start) or world.terrain_at(start) != IslandGenerator.Terrain.FOREST:
+				continue
+			var queue: Array[Vector2i] = [start]
+			seen[start] = true
+			var cells := 0
+			while not queue.is_empty():
+				var c: Vector2i = queue.pop_back()
+				cells += 1
+				for o in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var n: Vector2i = c + o
+					if seen.has(n) or world.terrain_at(n) != IslandGenerator.Terrain.FOREST:
+						continue
+					seen[n] = true
+					queue.append(n)
+			groves += 1
+			if cells < world.generator.min_grove_cells:
+				tiny += 1
+	ck(tiny == 0, "every woodland grove is a real region, not speckle",
+		"%d groves, %d under %d cells" % [groves, tiny, world.generator.min_grove_cells])
 
 	ck(props.y_sort_enabled, "props layer is y-sorted")
 
