@@ -32,6 +32,8 @@ const SRC_WOOD := 4
 ## row), so a boundary is only as organic as what is scattered along it.
 const SRC_DETAIL_GRASS := 5
 const SRC_DETAIL_WOOD := 6
+## Registered by the tileset builder but deliberately unused: nothing is
+## scattered onto water any more. See _scatter_detail.
 const SRC_DETAIL_SAND := 7
 ## Generated wavy straight-edge variants, one sheet per terrain. They carry the
 ## same corner bits as the pack's flat edges so the autotiler mixes them in.
@@ -339,7 +341,6 @@ func _scatter_detail() -> void:
 	detail_layer.clear()
 	var grass_patches := _detail_tiles(SRC_DETAIL_GRASS)
 	var wood_patches := _detail_tiles(SRC_DETAIL_WOOD)
-	var sand_patches := _detail_tiles(SRC_DETAIL_SAND)
 	if grass_patches.is_empty():
 		return
 	for y in generator.map_size.y:
@@ -359,11 +360,12 @@ func _scatter_detail() -> void:
 				# The whole point: green spilling onto the sand, so the eye
 				# reads a ragged shoreline instead of a staircase.
 				chance = edge_detail_chance
-			elif terrain == Terrain.SHALLOW_WATER and _touches(cell, Terrain.SAND):
-				# And sandy shoals spilling the other way, into the shallows.
-				chance = edge_detail_chance
-				source = SRC_DETAIL_SAND
-				patches = sand_patches
+			# ⚠️ Nothing is scattered onto the WATER any more. "Sandy shoals
+			# spilling into the shallows" was the intent; at play zoom it was
+			# 270 hard-outlined beige lumps sitting on flat open sea, detached
+			# from the beach, reading as litter rather than as shoals. The
+			# shoreline gets its softness from the sand blob's own curved alpha
+			# edge, which no longer has a single flat tile in it.
 			if chance <= 0.0 or _rng.randf() >= chance:
 				continue
 			detail_layer.set_cell(cell, source, patches[_rng.randi() % patches.size()])

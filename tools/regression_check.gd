@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 186
+const EXPECTED_CHECKS := 188
 
 var f := 0
 var fails := 0
@@ -220,6 +220,7 @@ func _phase2() -> void:
 
 	_check_drawable(world.get_node("Sand").tile_set)
 	_check_no_sharp_edges()
+	_check_detail_is_loose()
 
 	# ⚠️ Structural, not cosmetic: sand is a distance from water, so an inland
 	# beach is impossible by construction rather than by tuning. This check is
@@ -796,6 +797,51 @@ func _check_drawable(ts: TileSet) -> void:
 			"%d cells, %d wrong%s" % [region.size(), wrong, first])
 		ck(undrawable == 0, "%s: no cell is outside every 2x2 block of its own terrain" % layer_name,
 			"%d such cells" % undrawable)
+
+
+## ⚠️ A detail patch must be a loose tuft, never a block.
+##
+## The selection rule used to be "all four extreme corners transparent", and a
+## near-solid square with clipped corners passes that: cell (8,4) is 240 of 256
+## px opaque and was being scattered across the beach at 62% chance. 21 of the
+## 25 registered "patches" were blocks like that, which is where the hard green
+## rectangles on the sand came from.
+func _check_detail_is_loose() -> void:
+	var ts: TileSet = world.get_node("Detail").tile_set
+	var blocky: Array = []
+	var total := 0
+	for source_id in [World.SRC_DETAIL_GRASS, World.SRC_DETAIL_WOOD, World.SRC_DETAIL_SAND]:
+		var atlas := ts.get_source(source_id) as TileSetAtlasSource
+		if atlas == null:
+			continue
+		var img := atlas.texture.get_image()
+		img.convert(Image.FORMAT_RGBA8)
+		for i in atlas.get_tiles_count():
+			var coord := atlas.get_tile_id(i)
+			total += 1
+			var ink := 0
+			var widest := 0
+			for y in 16:
+				var run := 0
+				for x in 16:
+					if img.get_pixel(coord.x * 16 + x, coord.y * 16 + y).a > 0.16:
+						ink += 1
+						run += 1
+				widest = maxi(widest, run)
+			if ink > 96 or widest >= 12:
+				blocky.append("src %d %s ink %d widest %d" % [source_id, coord, ink, widest])
+	ck(blocky.is_empty(), "every scattered detail patch is a loose tuft, not a block",
+		"%d of %d blocky %s" % [blocky.size(), total, str(blocky.slice(0, 2))])
+
+	# And nothing is scattered onto open water, where a hard-outlined lump has
+	# nothing to blend into.
+	var detail: TileMapLayer = world.get_node("Detail")
+	var sand: TileMapLayer = world.get_node("Sand")
+	var on_water := 0
+	for cell in detail.get_used_cells():
+		if sand.get_cell_source_id(cell) == -1:
+			on_water += 1
+	ck(on_water == 0, "no detail patch sits on open water", "%d on water" % on_water)
 
 
 ## ⚠️ THE RULE: no sharp edge and no hard corner may ever be exposed.

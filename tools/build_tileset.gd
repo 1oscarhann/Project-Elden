@@ -30,6 +30,10 @@ const STRAIGHT_EDGES := [3, 5, 10, 12]
 ## A side counts as solid above this fraction opaque, and as empty below
 ## 1 - this. Used to catch tiles whose label contradicts their own artwork.
 const SIDE_SOLID := 0.80
+## Limits that separate a loose decorative tuft from a solid block. See
+## _add_detail — getting this wrong scatters green rectangles over the beach.
+const MAX_PATCH_INK := 96
+const MAX_PATCH_RUN := 12
 
 ## Terrain indices within the single corner-match terrain set.
 const T_SAND := 0
@@ -317,13 +321,25 @@ func _add_detail(ts: TileSet, id: int, path: String) -> void:
 			var coord := Vector2i(cx, cy)
 			if _corner_bits(img, coord) != 0:
 				continue
-			# Skip blank cells; a patch has to actually have ink in it.
+			# ⚠️ "All four extreme corners transparent" does NOT mean loose.
+			# A near-solid square with its corners clipped passes that test —
+			# cell (8,4) is 240 of 256 px opaque and was being scattered across
+			# the beach at 62% chance, which is where the hard green rectangles
+			# on the sand came from. 21 of the 25 "patches" were blocks like
+			# that; only 4 were real tufts.
 			var ink := 0
+			var widest := 0
 			for y in TILE.y:
+				var run := 0
 				for x in TILE.x:
 					if img.get_pixel(cx * TILE.x + x, cy * TILE.y + y).a > 0.16:
 						ink += 1
-			if ink < 12:
+						run += 1
+				widest = maxi(widest, run)
+			# A tuft is small and never spans the cell. Measured: the genuine
+			# ones are 23-29% opaque with a widest row of 8-11; the blocks start
+			# at 44% and 12.
+			if ink < 12 or ink > MAX_PATCH_INK or widest >= MAX_PATCH_RUN:
 				continue
 			src.create_tile(coord)
 			n += 1
