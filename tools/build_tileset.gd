@@ -35,6 +35,14 @@ const SHEETS := {
 	"grass": "res://assets/tiles/sprout_lands/Grass.png",
 	"wood": "res://assets/tiles/grass_dark.png",
 }
+## Generated wavy straight-edge variants. They carry the same corner bits as
+## the pack's flat edges, so Godot picks between them at random and a run of
+## boundary stops being a ruled line. See tools/build_terrain_atlas.gd.
+const EDGE_SHEETS := {
+	"sand": "res://assets/tiles/sand_edges.png",
+	"grass": "res://assets/tiles/grass_edges.png",
+	"wood": "res://assets/tiles/wood_edges.png",
+}
 const WATER := "res://assets/tiles/sprout_lands/Water.png"
 
 const CORNERS := [
@@ -86,6 +94,11 @@ func _initialize() -> void:
 	# Sand is the grass blob re-hued, so it carries the same patches — which is
 	# what lets the shoreline be broken up from the sea side too.
 	_add_detail(ts, 7, SHEETS["sand"])
+	# Only 4 signatures each (the straight edges), so completeness is not
+	# required of these — they top up the main sources rather than replace them.
+	ok = _add_terrain(ts, 8, EDGE_SHEETS["sand"], T_SAND, true, false) and ok
+	ok = _add_terrain(ts, 9, EDGE_SHEETS["grass"], T_GRASS, false, false) and ok
+	ok = _add_terrain(ts, 10, EDGE_SHEETS["wood"], T_WOOD, false, false) and ok
 
 	var err := ResourceSaver.save(ts, "res://assets/tiles/island_terrain.tres")
 	print("\n".join(_report))
@@ -114,7 +127,8 @@ func _add_water(ts: TileSet, id: int, path: String, solid: bool) -> void:
 
 
 ## One autotiled land terrain, with its corner bits read off the art.
-func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: bool) -> bool:
+func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: bool,
+		require_complete := true) -> bool:
 	var tex: Texture2D = load(path)
 	if tex == null:
 		push_error("Missing sheet %s" % path)
@@ -157,9 +171,12 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 			missing.append(b)
 	_report.append("terrain src %d %-16s %d tiles, %d/15 corner cases%s"
 		% [id, path.get_file(), src.get_tiles_count(), found.size(),
-			"" if missing.is_empty() else "  MISSING %s" % str(missing)])
-	_report.append("    solid-interior variants (texture variety): %d" % int(found.get(15, 0)))
-	return missing.is_empty()
+			"" if missing.is_empty() or not require_complete else "  MISSING %s" % str(missing)])
+	if require_complete:
+		_report.append("    solid-interior variants (texture variety): %d" % int(found.get(15, 0)))
+		return missing.is_empty()
+	_report.append("    tops up signatures %s" % str(found.keys()))
+	return not found.is_empty()
 
 
 ## The loose patch cells: content, but no corner is this terrain. They are the

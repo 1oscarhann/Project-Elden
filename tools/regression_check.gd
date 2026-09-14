@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 131
+const EXPECTED_CHECKS := 132
 
 var f := 0
 var fails := 0
@@ -170,11 +170,17 @@ func _phase2() -> void:
 		ck(int(cases.get(15, 0)) > 4, "%s has interior variety" % pair[1],
 			"%d variants" % int(cases.get(15, 0)))
 
-	# The real point of all of it: boundaries must actually use edge tiles.
+	# The real point of all of it: boundaries must actually use edge tiles, and
+	# a share of those must be the GENERATED wavy ones — the pack's own straight
+	# edges are a flat 2px inset, so on their own they draw a ruled line.
 	var edges := 0
+	var wavy := 0
 	for c in sand.get_used_cells():
-		var coord: Vector2i = sand.get_cell_atlas_coords(c)
-		var data := (ts.get_source(World.SRC_SAND) as TileSetAtlasSource).get_tile_data(coord, 0)
+		# Read the cell's OWN source: the wavy variants live in their own
+		# atlas, so assuming SRC_SAND here looked up coords in the wrong sheet.
+		var source: int = sand.get_cell_source_id(c)
+		var atlas := ts.get_source(source) as TileSetAtlasSource
+		var data := atlas.get_tile_data(sand.get_cell_atlas_coords(c), 0)
 		var full := true
 		for n in [TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER, TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
 				TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER, TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER]:
@@ -182,8 +188,12 @@ func _phase2() -> void:
 				full = false
 		if not full:
 			edges += 1
+			if source == World.SRC_SAND_EDGES:
+				wavy += 1
 	ck(edges > 200, "the shoreline is drawn with edge tiles, not squares",
 		"%d edge tiles" % edges)
+	ck(wavy > 40, "and a real share of them are the generated wavy variants",
+		"%d of %d" % [wavy, edges])
 
 	# The sheet's four frames differ by only a few percent, so the sea needs the
 	# shimmer shader on top to read as moving at all.

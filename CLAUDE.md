@@ -108,6 +108,29 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### Generated wavy edge tiles (closes the blocky-edge thread)
+
+- **⚠️ Every straight edge the pack ships is a FLAT 2px inset.** Measured on all eight, span 0.
+  So a run of grass against sand was a ruled line *by construction* — the shape simply is not in
+  the art, and no autotile wiring changes that. (An earlier note measured left/right from the
+  wrong side; the verdict held, the numbers did not. Grass-on-the-right means the gap is on the
+  LEFT.)
+- **`build_terrain_atlas.gd` now generates 12 wavy variants** — 4 directions x 3 bulge profiles —
+  from the sheet's own palette (`grass_edges.png`, then darkened and re-hued to
+  `wood_edges.png` / `sand_edges.png` by the same two transforms as the main sheets).
+- **Both ends are pinned at the pack's own depth of 2**, bulging to 8 in the middle. That is what
+  lets a generated tile abut the pack's flat edges and hand-drawn corners with no step — any
+  variant can follow any other.
+- They are registered as **extra sources (8/9/10) carrying the same corner bits**, so Godot mixes
+  them with the flat originals at random. `_add_terrain` takes `require_complete := false` for
+  these: they only cover the 4 straight-edge signatures and top the main sources up.
+- **⚠️ A PNG written this run is not importable yet** — `load()` on it returns null until Godot
+  reimports. The edge sheet is kept in memory and handed straight to the darken/re-hue steps.
+- **⚠️ Do not assume a cell's source id.** The regression's edge check looked coords up in
+  `SRC_SAND` and crashed once wavy tiles appeared, because those live in their own atlas. Read
+  `get_cell_source_id(cell)` per cell.
+- Measured result: **161 of 652** shoreline edge tiles are the generated variants, asserted.
+
 ### Terrain + UI corrections (owner review, post-Phase-9)
 
 Five things were called out on review. All five were real; two of my earlier claims were wrong.

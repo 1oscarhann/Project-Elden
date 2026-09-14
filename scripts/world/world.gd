@@ -33,6 +33,11 @@ const SRC_WOOD := 4
 const SRC_DETAIL_GRASS := 5
 const SRC_DETAIL_WOOD := 6
 const SRC_DETAIL_SAND := 7
+## Generated wavy straight-edge variants, one sheet per terrain. They carry the
+## same corner bits as the pack's flat edges so the autotiler mixes them in.
+const SRC_SAND_EDGES := 8
+const SRC_GRASS_EDGES := 9
+const SRC_WOOD_EDGES := 10
 ## The one corner-match terrain set, and the terrains inside it.
 const TERRAIN_SET := 0
 const T_SAND := 0
