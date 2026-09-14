@@ -106,7 +106,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE — all ten phases built, 184 regression checks green.** What is left is
+**PROJECT v1 COMPLETE — all ten phases built, 186 regression checks green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
 
@@ -191,7 +191,7 @@ page. All of that is data or packaging, not new systems.
   shown vs hidden, same night frame, away from the fire so its glow is not the variable):
   **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
   at the screenshot, I was about to call them invisible a second time and they are not.
-- **Regression is 184 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
+- **Regression is 186 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
   warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
   wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
   ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
@@ -260,6 +260,71 @@ menus, settings, transitions, screen shake and the feedback bullet were all ther
   instead (see the Phase 10 notes), which needs no attribution at all. Animal population in the
   save is marked optional in the spec and is still skipped: the spawner refills to its caps on
   load, so storing counts would change nothing.
+
+### ⚠️ RULE: no sharp edge or hard corner may EVER be exposed
+
+Standing rule for the terrain tileset. Every boundary the camera can see — grass/sand,
+sand/water, grass/woodland — must resolve to a curved or blended piece. Never a straight
+geometric line, never an unrounded 90 degree corner.
+
+`tools/sharp_edge_audit.gd` counts violations, in three kinds, all read from the ARTWORK rather
+than from the tileset's claims about itself:
+
+| | kind | meaning |
+|---|---|---|
+| A | ruled line | a straight-edge tile whose inset never varies across its 16px |
+| B | seam step | adjacent tiles whose shared boundary profiles disagree |
+| C | hard corner | an exposed corner drawn as an unrounded right angle |
+
+**Before: 32 violations of 1676 exposed boundary edges. After: 0.** Both asserted permanently.
+
+| layer | boundary edges | A before → after | B before → after | C |
+|-------|---------------:|------------------|------------------|---|
+| Sand | 630 | 13 → **0** | 1 → **0** | 0 |
+| Grass | 534 | 9 → **0** | 0 → 0 | 0 |
+| Woodland | 512 | 9 → **0** | 0 → 0 | 0 |
+| **total** | **1676** | **31 → 0** | **1 → 0** | **0** |
+
+Row by row: 83 map rows carry an exposed boundary, **0 of them contain a sharp edge**.
+
+#### ⚠️ The sheet holds TWO autotile sets, and only one tiles with itself
+
+This is the real "pieces aren't clicking together" bug, and it is a **wrong-category** bug, not a
+placement one. Placement was already provably correct — every cell's tile exactly matched the
+signature its shape required.
+
+- `Grass.png`'s **x >= 4 block is a second, narrow-strip autotile set.** Its pieces are cut 2px at
+  *both* ends, and the 2x2 corner probe reads that rounding as "terrain absent" — so a **left-edge
+  piece was labelled as a lone bottom-right corner**. Example, cell `(4,2)`, labelled signature 8:
+
+      ..############..      <- 2px cut on the left, and a 2px nibble top-right
+      ..#############.
+      ..##############      <- rows 2-15: opaque all the way to x=15
+      ...
+
+  That is not a corner. It is a left edge. Registered alongside the main blob set, Godot picks
+  between them at random, and a near-solid strip piece lands where a rounded curve belongs.
+- **16 of 43 tiles per terrain were in the wrong category — 48 across the three land terrains.**
+- **Caught by the one rule the corner probe cannot express:** the two corners along a side decide
+  what that whole side must look like. Both set → the side must be essentially solid. Both clear →
+  essentially empty. `build_tileset._wrong_category()` rejects anything that contradicts its own
+  artwork.
+- **⚠️ Do NOT try to re-label them instead.** Their shapes belong to a different set; correctly
+  labelled they still would not tile with the main blob. Dropping is the fix.
+
+#### Dead-flat straight edges are no longer registered at all
+
+Every straight edge the pack ships is a flat 2px inset (measured, all eight, span 0), so a single
+one anywhere is a ruled line exposed to the player. `FLAT_EDGE_WEIGHT` used to just make them
+rarer (40% → 12%), which is not the same as never. They are now **rejected outright**, and the
+generated wavy sheet supplies signatures 3/5/10/12 on its own.
+
+- **Coverage works out exactly:** dropping 16 wrong-category + 4 dead-flat leaves 23 tiles
+  covering 11 signatures; the wavy sheet supplies precisely the missing 4. **15/15 per terrain,
+  all curved.** Completeness is now asserted **per TERRAIN across its sources**, not per sheet —
+  the main sheet legitimately no longer carries those four.
+- Both violation classes are now **structurally impossible rather than merely rare**: the offending
+  tiles do not exist in the tileset, so no seed can select one.
 
 ### ⚠️ Corners and edges: the ACTUAL root cause (2x2 drawability)
 
@@ -711,7 +776,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-184 checks across every phase built so far; exits non-zero on failure. It exists because a
+186 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

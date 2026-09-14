@@ -27,14 +27,9 @@ const WATER_FPS := 0.45
 
 ## Straight-edge signatures: two adjacent corners set (top, right, left, bottom).
 const STRAIGHT_EDGES := [3, 5, 10, 12]
-## ⚠️ How much weight the pack's FLAT straight edges keep against the generated
-## wavy ones. Godot picks uniformly among equally-good matches, so with 2 flat
-## and 3 wavy candidates a straight run came out 40% ruler-straight — which is
-## what still read as geometric even though every boundary cell was correctly
-## an edge tile and not a fill. At 0.2 the flat ones drop to about 12%, which
-## keeps a few genuinely straight stretches without the whole coast looking
-## drawn with a ruler.
-const FLAT_EDGE_WEIGHT := 0.2
+## A side counts as solid above this fraction opaque, and as empty below
+## 1 - this. Used to catch tiles whose label contradicts their own artwork.
+const SIDE_SOLID := 0.80
 
 ## Terrain indices within the single corner-match terrain set.
 const T_SAND := 0
@@ -64,6 +59,10 @@ const CORNERS := [
 ]
 
 var _report: Array = []
+## terrain -> signature counts, accumulated across its main and wavy sources.
+## Completeness is a property of the TERRAIN, not of any one sheet: the main
+## sheet no longer carries the four straight-edge signatures at all.
+var _coverage: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -111,6 +110,17 @@ func _initialize() -> void:
 	ok = _add_terrain(ts, 9, EDGE_SHEETS["grass"], T_GRASS, false, false) and ok
 	ok = _add_terrain(ts, 10, EDGE_SHEETS["wood"], T_WOOD, false, false) and ok
 
+	for terrain in [T_SAND, T_GRASS, T_WOOD]:
+		var found: Dictionary = _coverage.get(terrain, {})
+		var missing: Array = []
+		for b in range(1, 16):
+			if not found.has(b):
+				missing.append(b)
+		_report.append("terrain %d: %d/15 signatures across its sources%s"
+			% [terrain, found.size(), "" if missing.is_empty() else "   MISSING %s" % str(missing)])
+		if not missing.is_empty():
+			ok = false
+
 	var err := ResourceSaver.save(ts, "res://assets/tiles/island_terrain.tres")
 	print("\n".join(_report))
 	print("save=", error_string(err))
@@ -152,6 +162,8 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 	ts.add_source(src, id)
 
 	var found := {}
+	var rejected: Array = []
+	var flats := 0
 	var cols := img.get_width() / TILE.x
 	var rows := img.get_height() / TILE.y
 	for cy in rows:
@@ -161,6 +173,27 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 			# 0000 is a blank cell in the sheet, not a tile.
 			if bits == 0:
 				continue
+			# ⚠️ The sheet holds TWO autotile sets, and only the first tiles with
+			# itself. The x>=4 block is a narrow-strip set: its pieces are cut
+			# 2px at both ends, so the corner probe reads that rounding as
+			# "terrain absent" and labels a left-edge piece as a lone corner.
+			# Registered together, Godot mixes them at random and a strip piece
+			# lands where a curve belongs — a near-solid tile jammed against a
+			# rounded one. 16 of 43 tiles per terrain were in the wrong
+			# category this way. Catch them by the one rule the corner probe
+			# cannot express: the two corners on a side determine what that
+			# whole side must look like.
+			var wrong := _wrong_category(img, coord, bits)
+			if not wrong.is_empty():
+				rejected.append("%s %s: %s" % [coord, bits, wrong])
+				continue
+			# No dead-straight edges, ever. Every one of the pack's straight
+			# edges is a flat 2px inset (measured, all eight, span 0), so a run
+			# of them is a ruled line by construction. The generated wavy sheet
+			# covers these four signatures on its own.
+			if require_complete and bits in STRAIGHT_EDGES and _is_flat(img, coord, bits):
+				flats += 1
+				continue
 			src.create_tile(coord)
 			var data := src.get_tile_data(coord, 0)
 			data.terrain_set = 0
@@ -168,10 +201,6 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 			for i in 4:
 				if bits & (1 << i):
 					data.set_terrain_peering_bit(CORNERS[i], terrain)
-			# Bias away from the pack's flat straight edges (see FLAT_EDGE_WEIGHT).
-			# Only the main sources carry them; the generated sheets stay at 1.0.
-			if require_complete and bits in STRAIGHT_EDGES:
-				data.probability = FLAT_EDGE_WEIGHT
 			if navigable:
 				var nav := NavigationPolygon.new()
 				nav.vertices = PackedVector2Array([
@@ -180,18 +209,91 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 				data.set_navigation_polygon(0, nav)
 			found[bits] = int(found.get(bits, 0)) + 1
 
-	var missing: Array = []
-	for b in range(1, 16):
-		if not found.has(b):
-			missing.append(b)
-	_report.append("terrain src %d %-16s %d tiles, %d/15 corner cases%s"
-		% [id, path.get_file(), src.get_tiles_count(), found.size(),
-			"" if missing.is_empty() or not require_complete else "  MISSING %s" % str(missing)])
+	_report.append("terrain src %d %-16s %d tiles kept, %d signatures"
+		% [id, path.get_file(), src.get_tiles_count(), found.size()])
+	if not rejected.is_empty():
+		_report.append("    rejected %d wrong-category tiles: %s"
+			% [rejected.size(), ", ".join(PackedStringArray(rejected.slice(0, 3)))])
+	if flats > 0:
+		_report.append("    rejected %d dead-flat straight edges (wavy sheet covers those)" % flats)
 	if require_complete:
 		_report.append("    solid-interior variants (texture variety): %d" % int(found.get(15, 0)))
-		return missing.is_empty()
-	_report.append("    tops up signatures %s" % str(found.keys()))
+	else:
+		_report.append("    tops up signatures %s" % str(found.keys()))
+	_coverage[terrain] = _merge(_coverage.get(terrain, {}), found)
 	return not found.is_empty()
+
+
+## Merges the signatures a source provides into what the terrain already has.
+func _merge(a: Dictionary, b: Dictionary) -> Dictionary:
+	var out := a.duplicate()
+	for k in b:
+		out[k] = int(out.get(k, 0)) + int(b[k])
+	return out
+
+
+## A tile is in the wrong category when its label contradicts its own artwork:
+## the two corners along a side decide whether that whole side must be solid or
+## empty, and this is the check the 2px corner probe cannot make.
+func _wrong_category(img: Image, coord: Vector2i, bits: int) -> String:
+	var sides := {"top": [0, 1], "bottom": [2, 3], "left": [0, 2], "right": [1, 3]}
+	var problems: PackedStringArray = []
+	for name in sides:
+		var pair: Array = sides[name]
+		var a: bool = (bits & (1 << int(pair[0]))) != 0
+		var b: bool = (bits & (1 << int(pair[1]))) != 0
+		if a != b:
+			continue  # transitional side, nothing to assert
+		var fill := _edge_fill(img, coord, name)
+		if a and fill < SIDE_SOLID:
+			problems.append("%s not solid (%.0f%%)" % [name, fill * 100.0])
+		elif not a and fill > 1.0 - SIDE_SOLID:
+			problems.append("%s not empty (%.0f%%)" % [name, fill * 100.0])
+	return ", ".join(problems)
+
+
+func _edge_fill(img: Image, coord: Vector2i, side: String) -> float:
+	var base := coord * TILE
+	var opaque := 0
+	for i in TILE.x:
+		var p := Vector2i.ZERO
+		match side:
+			"top": p = Vector2i(i, 0)
+			"bottom": p = Vector2i(i, TILE.y - 1)
+			"left": p = Vector2i(0, i)
+			_: p = Vector2i(TILE.x - 1, i)
+		if img.get_pixel(base.x + p.x, base.y + p.y).a > 0.16:
+			opaque += 1
+	return float(opaque) / TILE.x
+
+
+## True when a straight-edge tile's exposed side has a constant inset — a ruled
+## line rather than a curve.
+func _is_flat(img: Image, coord: Vector2i, bits: int) -> bool:
+	var side := "top"
+	if bits == 3: side = "bottom"
+	elif bits == 5: side = "right"
+	elif bits == 10: side = "left"
+	var base := coord * TILE
+	var lo := 99
+	var hi := -1
+	for i in TILE.x:
+		var d := TILE.y
+		for step in TILE.y:
+			var p := Vector2i.ZERO
+			match side:
+				"top": p = Vector2i(i, step)
+				"bottom": p = Vector2i(i, TILE.y - 1 - step)
+				"left": p = Vector2i(step, i)
+				_: p = Vector2i(TILE.x - 1 - step, i)
+			if img.get_pixel(base.x + p.x, base.y + p.y).a > 0.16:
+				d = step
+				break
+		if d >= TILE.y:
+			continue
+		lo = mini(lo, d)
+		hi = maxi(hi, d)
+	return hi == lo and hi >= 0
 
 
 ## The loose patch cells: content, but no corner is this terrain. They are the
