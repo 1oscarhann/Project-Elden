@@ -154,6 +154,33 @@ func selected_item_id() -> String:
 	return slot(selected_hotbar)["id"]
 
 
+## --- persistence -----------------------------------------------------------
+
+## Saved as the raw slot array rather than totals, because WHERE a thing sits
+## is part of the state: the first eight slots are the hotbar.
+func save_data() -> Dictionary:
+	var slots: Array = []
+	for entry in _slots:
+		slots.append({"id": entry["id"], "count": int(entry["count"])})
+	return {"slots": slots, "selected_hotbar": selected_hotbar}
+
+
+func load_data(data: Dictionary) -> void:
+	clear()
+	var slots: Array = data.get("slots", [])
+	for i in mini(slots.size(), _slots.size()):
+		var entry: Dictionary = slots[i]
+		var id := String(entry.get("id", ""))
+		var count := int(entry.get("count", 0))
+		# Drop anything whose item no longer exists rather than carrying a
+		# phantom id the rest of the game cannot resolve.
+		if id.is_empty() or count <= 0 or not ItemDB.has_item(id):
+			continue
+		_slots[i] = {"id": id, "count": mini(count, ItemDB.max_stack(id))}
+	selected_hotbar = clampi(int(data.get("selected_hotbar", 0)), 0, HOTBAR_SIZE - 1)
+	inventory_changed.emit()
+
+
 func _order_by_smallest_stack(id: String) -> Array:
 	var indices: Array = []
 	for i in _slots.size():

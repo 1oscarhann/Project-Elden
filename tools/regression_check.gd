@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 136
+const EXPECTED_CHECKS := 172
 
 var f := 0
 var fails := 0
@@ -77,14 +77,33 @@ func _process(delta: float) -> void:
 	_phase7()
 	_phase8()
 	_phase9()
+	_phase10()
 	print("\n-- Phase 9b: wildlife over time --")
 
 
 func _finish() -> void:
+	_silence()
 	ck(checks >= EXPECTED_CHECKS - 1, "the whole suite ran — no phase aborted early",
 		"%d of %d" % [checks + 1, EXPECTED_CHECKS])
 	print("\n%d checks, %s" % [checks, "ALL GREEN" if fails == 0 else "%d FAILURE(S)" % fails])
 	get_tree().quit(fails)
+
+
+## Stops every sound before quitting.
+##
+## Not cosmetic: a playback still running when the tree is torn down keeps its
+## stream alive past cleanup, and Godot reports that as leaked instances. Six
+## bogus "leaks" in the output is exactly how a real one would go unnoticed.
+func _silence() -> void:
+	Audio.stop_world_audio()
+	_stop_players(get_tree().root)
+
+
+func _stop_players(node: Node) -> void:
+	if node is AudioStreamPlayer or node is AudioStreamPlayer2D:
+		node.stop()
+	for child in node.get_children():
+		_stop_players(child)
 
 
 func _phase1() -> void:
@@ -668,6 +687,223 @@ func _phase9() -> void:
 
 ## Frames 3+. Fleeing and pathing only exist over time, so Phase 9's behaviour
 ## runs as a short script rather than a single-frame assertion.
+## How many nodes in the props layer came from this scene.
+func _count_scene(path: String) -> int:
+	var total := 0
+	for node in props.get_children():
+		if node.scene_file_path == path:
+			total += 1
+	return total
+
+
+## Free, buildable cells spiralling out from `centre`, nearest first.
+func _free_cells_near(centre: Vector2i, radius: int) -> Array:
+	var out: Array = []
+	for r in range(1, radius + 1):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if absi(dx) != r and absi(dy) != r:
+					continue  # Only the ring just added.
+				out.append(centre + Vector2i(dx, dy))
+	return out
+
+
+func _phase10() -> void:
+	print("\n-- Phase 10: save/load, audio, polish --")
+	# Slot 2, never slot 0: slot 0 is what the game autosaves to and what the
+	# title screen's Continue reads, and a test run must not leave a save there.
+	var slot := 2
+	SaveManager.delete_save(slot)
+
+	# Baseline, so phase 9b inherits the world it expected rather than whatever
+	# this phase leaves behind.
+	var baseline := {
+		"day_night": DayNight.save_data(),
+		"game_state": GameState.save_data(),
+		"inventory": Inventory.save_data(),
+		"world": world.save_data(),
+	}
+
+	ck(SaveManager.FORMAT_VERSION >= 1, "the save format is versioned",
+		"v%d" % SaveManager.FORMAT_VERSION)
+
+	# Chop BEFORE setting the bag up: a boulder drops stone into the inventory,
+	# so doing it the other way round means the counts asserted below are not
+	# the counts that were put there.
+	for i in tree_node.data.hits_required:
+		tree_node.hit()
+
+	var bench := ItemDB.get_item("workbench")
+	var built: Node2D = null
+	var bench_cell := Vector2i.ZERO
+	# Searched, not guessed: the cell four tiles diagonally from spawn is as
+	# likely as not to hold a tree, and a test that depends on the scatter
+	# missing one particular tile is a test that fails on a new seed.
+	for cell in _free_cells_near(world.world_to_cell(player.global_position), 12):
+		built = world.build_at(bench.placed_scene, cell, bench.placed_footprint, bench.id)
+		if built != null:
+			bench_cell = cell
+			break
+	ck(built != null, "a building can be placed for the save to remember", str(bench_cell))
+
+	# Make the session distinctive in every system, then save it.
+	Inventory.clear()
+	Inventory.add_item("wood", 7)
+	Inventory.add_item("stone", 3)
+	Inventory.select_hotbar(2)
+	GameState.set_warmth(42.0)
+	DayNight.load_data({"time_of_day": 0.61, "day": 5})
+	fire.set_fuel(63.0)
+
+	ck(SaveManager.save_game(slot), "save_game writes a slot")
+	ck(SaveManager.has_save(slot), "and has_save sees it")
+
+	var raw := FileAccess.get_file_as_string(SaveManager.save_path(slot))
+	var parsed: Variant = JSON.parse_string(raw)
+	ck(parsed is Dictionary, "the save file is valid JSON", "%d bytes" % raw.length())
+	var missing: Array = []
+	for key in ["version", "day_night", "game_state", "inventory", "world", "player"]:
+		if not (parsed as Dictionary).has(key):
+			missing.append(key)
+	ck(missing.is_empty(), "every system is in the save", str(missing))
+	# The whole point of saving deltas rather than the map: a save of a 96x96
+	# island should be kilobytes, not megabytes.
+	ck(raw.length() < 64000, "the save stays small — the map is not in it",
+		"%.1f KB" % (raw.length() / 1024.0))
+
+	ck(SaveManager.slot_summary(slot).begins_with("Day 5"),
+		"a slot can be summarised without loading it", SaveManager.slot_summary(slot))
+
+	# Counted BEFORE the load, not assumed to be zero: phase 8 places a workbench
+	# of its own, so the question is whether loading ADDS one, not how many
+	# exist on the island.
+	var benches_before := _count_scene(bench.placed_scene.resource_path)
+
+	# Now trash everything and load it back.
+	Inventory.clear()
+	Inventory.add_item("fibre", 99)
+	GameState.set_warmth(100.0)
+	DayNight.load_data({"time_of_day": 0.1, "day": 99})
+	fire.set_fuel(0.0)
+	var loaded := SaveManager.read_save(slot)
+	SaveManager.apply_data(loaded)
+
+	ck(Inventory.count("wood") == 7 and Inventory.count("stone") == 3,
+		"the bag comes back exactly", str(Inventory.totals()))
+	ck(Inventory.count("fibre") == 0, "and what was not saved does not survive")
+	ck(Inventory.selected_hotbar == 2, "including which hotbar slot was selected")
+	ck(is_equal_approx(GameState.warmth, 42.0), "warmth comes back", str(GameState.warmth))
+	ck(DayNight.day == 5 and is_equal_approx(DayNight.time_of_day, 0.61),
+		"the clock comes back", "day %d at %.2f" % [DayNight.day, DayNight.time_of_day])
+	ck(is_equal_approx(fire.fuel, 63.0), "the campfire remembers its fuel", str(fire.fuel))
+	ck(not tree_node.is_ready(), "a chopped tree stays chopped")
+
+	# Restored by cell, so loading into a world that still holds the building
+	# must not stack a second copy on it — and must not lose the original.
+	var benches_after := _count_scene(bench.placed_scene.resource_path)
+	ck(benches_after == benches_before, "loading does not duplicate a placed building",
+		"%d before, %d after" % [benches_before, benches_after])
+	ck(world.can_build(bench_cell, bench.placed_footprint) == false,
+		"and its tile is still marked occupied")
+
+	# A file claiming a future format is refused rather than half-read.
+	var future := loaded.duplicate()
+	future["version"] = SaveManager.FORMAT_VERSION + 99
+	var file := FileAccess.open(SaveManager.save_path(slot), FileAccess.WRITE)
+	file.store_string(JSON.stringify(future))
+	file.close()
+	ck(SaveManager.read_save(slot).is_empty(), "a save from a newer version is refused")
+
+	ck(SaveManager.delete_save(slot) and not SaveManager.has_save(slot),
+		"a slot can be deleted")
+
+	# --- settings ---
+	ck(AudioServer.get_bus_index("Music") > 0 and AudioServer.get_bus_index("SFX") > 0,
+		"the Music and SFX buses exist")
+	var was := Settings.sfx_volume
+	Settings.set_value("sfx_volume", 0.25)
+	var sfx_db := AudioServer.get_bus_volume_db(AudioServer.get_bus_index("SFX"))
+	ck(is_equal_approx(sfx_db, linear_to_db(0.25)), "a volume setting reaches the bus",
+		"%.1f dB" % sfx_db)
+	Settings.set_value("sfx_volume", 0.0)
+	ck(AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")),
+		"and zero genuinely mutes rather than sitting quiet")
+	Settings.set_value("sfx_volume", was)
+	Settings.set_value("day_length", 420.0)
+	ck(is_equal_approx(DayNight.day_length_seconds, 420.0),
+		"the day-length setting reaches the clock")
+	Settings.set_value("day_length", 600.0)
+
+	# --- audio assets ---
+	var bad: Array = []
+	var quiet: Array = []
+	var clipped: Array = []
+	for stem in ["sfx_step", "sfx_chop", "sfx_pickup", "sfx_craft", "sfx_place",
+			"sfx_ui", "sfx_eat", "sfx_fire", "amb_day", "amb_night", "music_theme"]:
+		var stream := load("res://assets/audio/%s.res" % stem) as AudioStreamWAV
+		if stream == null or stream.data.is_empty():
+			bad.append(stem)
+			continue
+		var peak := 0
+		var n := stream.data.size() / 2
+		for i in n:
+			peak = maxi(peak, absi(stream.data.decode_s16(i * 2)))
+		# Clipping is what a careless gain change in build_audio.gd produces,
+		# and it is inaudible as a handful of samples until it is not.
+		if peak >= 32760:
+			clipped.append(stem)
+		if peak < 3000:
+			quiet.append("%s@%d" % [stem, peak])
+	ck(bad.is_empty(), "every sound the game asks for exists", str(bad))
+	ck(clipped.is_empty(), "and none of them clip", str(clipped))
+	ck(quiet.is_empty(), "and none came out silent", str(quiet))
+
+	var unloopable: Array = []
+	for stem in ["sfx_fire", "amb_day", "amb_night", "music_theme"]:
+		var stream := load("res://assets/audio/%s.res" % stem) as AudioStreamWAV
+		if stream.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+			unloopable.append(stem)
+	ck(unloopable.is_empty(), "the beds and the theme actually loop", str(unloopable))
+
+	var unregistered: Array = []
+	for key in Audio.SFX:
+		if not ResourceLoader.exists("res://assets/audio/%s.res" % Audio.SFX[key]):
+			unregistered.append(key)
+	ck(unregistered.is_empty(), "every registered effect key resolves to a file",
+		str(unregistered))
+
+	# --- menus and feedback ---
+	var scenes: Array = []
+	for path in ["res://scenes/ui/MainMenu.tscn", "res://scenes/ui/PauseMenu.tscn",
+			"res://scenes/ui/SettingsPanel.tscn"]:
+		var node: Node = (load(path) as PackedScene).instantiate()
+		if node == null:
+			scenes.append(path)
+		else:
+			node.free()
+	ck(scenes.is_empty(), "the menus instantiate", str(scenes))
+	ck(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/ui/MainMenu.tscn",
+		"the game boots to the title screen")
+
+	# ⚠️ Load-bearing, not cosmetic. _unhandled_input runs in reverse tree order,
+	# so a PauseMenu listed last would swallow the Esc that closes the bag.
+	var main := get_node("Main")
+	ck(main.get_child(0).name == "PauseMenu",
+		"the pause menu is the FIRST child, so Esc reaches it last",
+		main.get_child(0).name)
+	ck(main.get_node_or_null("PickupFeed") != null, "the pickup feed is in the scene")
+	ck(main.get_node_or_null("HUD/Toast") != null, "the HUD has a day toast")
+	ck(player.get_node_or_null("Dust") != null, "the player kicks up dust")
+	ck(player.get_node_or_null("Camera2D/Fireflies") != null, "fireflies follow the camera")
+	ck(fire.get_node_or_null("Crackle") != null, "the campfire crackles")
+
+	# Put the world back the way phase 9b expects to find it.
+	SaveManager.apply_data(baseline)
+	if is_instance_valid(built):
+		built.queue_free()
+	Inventory.clear()
+
+
 func _phase9_step(delta: float) -> void:
 	if wait > 0.0:
 		wait -= delta

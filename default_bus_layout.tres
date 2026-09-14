@@ -1,0 +1,19 @@
+[gd_resource type="AudioBusLayout" format=3]
+
+; Three buses so the settings screen can offer separate music and effect
+; sliders. Everything the game plays goes to Music or SFX, never straight to
+; Master — Master is only the final output the master slider trims.
+
+[resource]
+bus/1/name = &"Music"
+bus/1/solo = false
+bus/1/mute = false
+bus/1/bypass_fx = false
+bus/1/volume_db = 0.0
+bus/1/send = &"Master"
+bus/2/name = &"SFX"
+bus/2/solo = false
+bus/2/mute = false
+bus/2/bypass_fx = false
+bus/2/volume_db = 0.0
+bus/2/send = &"Master"

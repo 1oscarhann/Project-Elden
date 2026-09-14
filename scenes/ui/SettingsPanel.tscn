@@ -1,0 +1,129 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_panel.gd" id="script_settings"]
+
+[node name="SettingsPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script_settings")
+
+[node name="Shade" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="Window" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -108.0
+offset_top = -84.0
+offset_right = 108.0
+offset_bottom = 84.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="Window"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Window/Layout"]
+layout_mode = 2
+theme_type_variation = &"PanelText"
+theme_override_font_sizes/font_size = 12
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="Master" type="HBoxContainer" parent="Window/Layout"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Window/Layout/Master"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Master"
+
+[node name="Slider" type="HSlider" parent="Window/Layout/Master"]
+custom_minimum_size = Vector2(120, 12)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="Music" type="HBoxContainer" parent="Window/Layout"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Window/Layout/Music"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Music"
+
+[node name="Slider" type="HSlider" parent="Window/Layout/Music"]
+custom_minimum_size = Vector2(120, 12)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+value = 0.6
+
+[node name="Sfx" type="HBoxContainer" parent="Window/Layout"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Window/Layout/Sfx"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Effects"
+
+[node name="Slider" type="HSlider" parent="Window/Layout/Sfx"]
+custom_minimum_size = Vector2(120, 12)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+value = 0.9
+
+[node name="DayLength" type="HBoxContainer" parent="Window/Layout"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Window/Layout/DayLength"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Day length"
+
+[node name="Slider" type="HSlider" parent="Window/Layout/DayLength"]
+custom_minimum_size = Vector2(86, 12)
+layout_mode = 2
+min_value = 120.0
+max_value = 1800.0
+step = 60.0
+value = 600.0
+
+[node name="Value" type="Label" parent="Window/Layout/DayLength"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "10 min"
+
+[node name="Fullscreen" type="CheckButton" parent="Window/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "Fullscreen"
+
+[node name="Close" type="Button" parent="Window/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Back"

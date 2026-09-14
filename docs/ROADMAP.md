@@ -15,7 +15,7 @@ phase until the previous one runs and I've confirmed it. Tick boxes as we go.
 | 7 | Crafting tree | `phase07_crafting.md` | ☑ |
 | 8 | Grid base building + interiors | `phase08_building.md` | ☑ |
 | 9 | Passive animals + hunting | `phase09_animals.md` | ☑ |
-| 10 | Save/load + polish pass | `phase10_polish.md` | ☐ |
+| 10 | Save/load + polish pass | `phase10_polish.md` | ☑ |
 
 ## Dependency notes
 - Phase 6 (Inventory) is a soft prerequisite for 5, 7, 9 to be *meaningful*, but 5 can drop

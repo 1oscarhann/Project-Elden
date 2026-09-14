@@ -88,6 +88,7 @@ func hit() -> bool:
 	# this node exists.
 	get_tree().call_group("player", "swing", global_position - Vector2(0, 8))
 	get_tree().call_group(PlayerCamera.GROUP, "add_trauma", shake_per_hit)
+	Audio.play("chop")
 	_particles.restart()
 	_particles.emitting = true
 	_squash()
@@ -100,6 +101,28 @@ func hit() -> bool:
 	_regrow_left = data.regrow_seconds
 	harvested.emit(data)
 	return true
+
+
+# --- persistence ------------------------------------------------------------
+
+## True when this node is exactly as the generator left it, so the world can
+## skip writing it to the save entirely.
+func is_untouched() -> bool:
+	return is_ready() and _hits == 0
+
+
+func save_data() -> Dictionary:
+	return {"stage": _stage, "hits": _hits, "regrow": _regrow_left}
+
+
+## The argument is named `state`, not `data`: this class already has a `data`
+## member holding its HarvestableData, and shadowing it here would be a trap.
+func load_data(state: Dictionary) -> void:
+	_hits = maxi(0, int(state.get("hits", 0)))
+	_regrow_left = maxf(0.0, float(state.get("regrow", 0.0)))
+	# Through _set_stage rather than the field, so the sprite, the collider and
+	# the stage_changed listeners all catch up.
+	_set_stage(int(state.get("stage", _stages.size() - 1)))
 
 
 ## One of `variants`, or `fallback` when no variants are configured.

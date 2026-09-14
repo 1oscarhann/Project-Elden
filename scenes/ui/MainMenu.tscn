@@ -1,0 +1,78 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="script_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/SettingsPanel.tscn" id="scene_settings"]
+
+[node name="MainMenu" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script_menu")
+
+[node name="Sky" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.271, 0.494, 0.549, 1)
+
+[node name="Layout" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Layout"]
+custom_minimum_size = Vector2(176, 0)
+layout_mode = 2
+
+[node name="Buttons" type="VBoxContainer" parent="Layout/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_type_variation = &"PanelText"
+theme_override_font_sizes/font_size = 16
+text = "Cozy Island"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 8
+text = "keep the fire lit"
+horizontal_alignment = 1
+
+[node name="NewGame" type="Button" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "New Game"
+
+[node name="Continue" type="Button" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "Continue"
+
+[node name="SlotLine" type="Label" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 8
+text = "No save yet"
+horizontal_alignment = 1
+
+[node name="Settings" type="Button" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "Settings"
+
+[node name="Quit" type="Button" parent="Layout/Panel/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "Quit"
+
+[node name="SettingsPanel" parent="." instance=ExtResource("scene_settings")]

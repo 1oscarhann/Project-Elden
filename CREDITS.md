@@ -15,6 +15,18 @@ Art assets by CraftPix.net (free licence — attribution required):
 https://craftpix.net
 
 
+## Audio
+
+**All sound and music in this game is original, generated procedurally** by
+`tools/build_audio.gd` and written to `assets/audio/*.res`. Nothing is sampled, sourced or
+licensed from anyone — footsteps, the chop, the pickup chime, the fire crackle, the surf and
+cricket ambiences and the theme are all synthesised from noise and sine waves. There is
+therefore **no audio attribution to give and no audio licence to honour**, and regenerating
+the lot is one command:
+
+    godot --headless --path . --script res://tools/build_audio.gd
+
+
 ## Engine
 
 Built with [Godot Engine](https://godotengine.org) (MIT licence).

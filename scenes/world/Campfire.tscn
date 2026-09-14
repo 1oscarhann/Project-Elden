@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/campfire.gd" id="script_campfire"]
 [ext_resource type="Script" path="res://scripts/world/crafting_station.gd" id="script_station"]
 [ext_resource type="SpriteFrames" path="res://scenes/world/campfire_frames.tres" id="frames_fire"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx_fire.res" id="sfx_fire"]
 
 [sub_resource type="CircleShape2D" id="shape_warmth"]
 radius = 56.0
@@ -87,3 +88,11 @@ station_id = "campfire"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Station"]
 shape = SubResource("shape_station")
+
+[node name="Crackle" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_fire")
+volume_db = -8.0
+max_distance = 140.0
+attenuation = 1.6
+bus = &"SFX"
+autoplay = false

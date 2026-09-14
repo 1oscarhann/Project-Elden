@@ -24,7 +24,22 @@ const STOP_EPSILON := 1.0
 ## Pixels per second squared while slowing down. Higher = snappier stops.
 @export var friction := 900.0
 
+@export_group("Feel")
+## Distance walked between footsteps, in pixels. A stride, not a timer — so
+## steps stay in sync whether you are walking, running or slowed by cold.
+@export var stride := 16.0
+## Sideways wobble, in pixels, when warmth is at zero. Scaled by chill().
+@export var shiver_pixels := 0.7
+@export var shiver_hz := 11.0
+
 @onready var _sprite: AnimatedSprite2D = $Sprite
+@onready var _dust: CPUParticles2D = $Dust
+
+## Pixels left to walk before the next footstep.
+var _stride_left := 0.0
+## Running total for the shiver oscillation. Kept here rather than read from
+## Time so it pauses with the game.
+var _shiver_time := 0.0
 
 ## Set while the one-shot harvest swing plays, so the movement state machine
 ## does not stomp the animation mid-swing.
@@ -71,6 +86,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if GameState.consume(id):
 		Inventory.remove_item(id, 1)
+		Audio.play("eat")
 		get_viewport().set_input_as_handled()
 
 
@@ -84,6 +100,8 @@ func _physics_process(delta: float) -> void:
 
 	_apply_movement(input, running, delta)
 	move_and_slide()
+	_footsteps(delta)
+	_shiver(delta)
 
 	_state = _resolve_state(input, running)
 	# Moving cancels a swing; otherwise let the one-shot animation finish.
@@ -91,6 +109,37 @@ func _physics_process(delta: float) -> void:
 		_swinging = false
 	if not _swinging:
 		_play_animation()
+
+
+## A puff of dust and a step sound every `stride` pixels travelled. Driven by
+## distance rather than by the animation, because the animation is a looping
+## SpriteFrames with no frame callbacks to hang this off.
+func _footsteps(delta: float) -> void:
+	var travelled := velocity.length() * delta
+	if travelled < 0.01:
+		# Reset part-way through a stride when they stop, so the next step
+		# lands on setting off rather than immediately.
+		_stride_left = stride * 0.4
+		return
+	_stride_left -= travelled
+	if _stride_left > 0.0:
+		return
+	_stride_left = stride
+	Audio.play("step", 0.14)
+	_dust.restart()
+	_dust.emitting = true
+
+
+## A small horizontal tremble when cold, scaled by how cold. Applied to the
+## SPRITE's offset, not the body: nudging the body would fight the physics and
+## desync the shadow.
+func _shiver(delta: float) -> void:
+	var chill := GameState.chill()
+	if chill <= 0.0:
+		_sprite.offset.x = 0.0
+		return
+	_shiver_time += delta
+	_sprite.offset.x = sin(_shiver_time * TAU * shiver_hz) * shiver_pixels * chill
 
 
 ## Ease velocity toward the target rather than snapping to it, so starts and

@@ -106,7 +106,101 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
+**Phase 10 complete — the ten-phase plan is done.** What is left is content and a build:
+more recipes, more islands, seasons, a desktop/web export and an itch.io page. All of that is
+data or packaging, not new systems.
+
+### Phase 10 notes
+
+- **Eight autoloads now**, in this order: `DayNight`, `GameState`, `ItemDB`, `Inventory`,
+  `Crafting`, **`SaveManager`**, **`Settings`**, **`Audio`**. The order is load-bearing:
+  `Settings.apply()` writes `DayNight.day_length_seconds`, and `Audio._ready()` connects to
+  `DayNight.phase_changed`, `Inventory.item_gained` and `Crafting.crafted`.
+- **The game now boots to `scenes/ui/MainMenu.tscn`**, not `Main.tscn`.
+- **Saving is a protocol, not a switchboard.** Every participant exposes
+  `save_data() -> Dictionary` / `load_data(Dictionary)` and `SaveManager` only posts those
+  dictionaries around — it never learns what warmth or a hotbar slot *is*. Adding a system to the
+  save is two methods on that system and one line in `save_game`.
+- **⚠️ The terrain is NOT in the save — the SEED is.** The island is a pure function of the seed,
+  so only what the player changed is written: buildings placed, trees chopped, fires fed.
+  Measured: **a played session saves at 1.5 KB**, versus roughly a megabyte for 96x96 cells across
+  five layers. `World.load_data` rebuilds the island only if the saved seed differs.
+- **Saves are keyed by CELL**, because scenery is jittered only *within* its own tile
+  (±4px x, ±3px y on a 16px grid), so `world_to_cell(node.position)` round-trips exactly. JSON
+  object keys must be strings, hence `"%d,%d"`.
+- **Only harvestables that differ from generated state are written** (`is_untouched()`), so an
+  untouched island contributes an empty dictionary.
+- **Loading RESTARTS the scene rather than patching the live one.** A world that has been played
+  in carries chopped trees, placed buildings and a wandering population; unpicking all that
+  correctly is far more fragile than building it once. `load_game` therefore does
+  `change_scene_to_file` + two `await get_tree().process_frame` (one to swap, one for `_ready`),
+  then applies. `apply_data()` is public so the regression can restore into a live world without
+  a scene change.
+- **`"version": 1` with a `_migrate()` hook that already exists.** A file from a *newer* version
+  is refused outright rather than half-read — asserted.
+- **Autosave is on the day roll**, to slot 0, which is also what the title screen's Continue
+  reads. Slots 1 and 2 exist in `SaveManager`; the title screen deliberately only promises one.
+- **⚠️ ALL AUDIO IS SYNTHESISED, by `tools/build_audio.gd`.** There is no audio in any of the
+  asset packs and a "free" sound off the internet is a licence question nobody wants to answer
+  later, so eleven sounds are generated from noise and sine waves. **No attribution, no licence.**
+  - Written as **`.res` (binary AudioStreamWAV), NOT `.wav`** — `save_to_wav()` does not write
+    loop points, so a looping ambience would need a hand-edited `.import` file to survive. A
+    resource carries `loop_mode` with it and `load()`s with no import step at all.
+  - **⚠️ The normalisation target IS the mix.** Before it existed, a measured footstep peaked at
+    **0.97** and the pickup chime at **0.26** — every step drowned the reward sound. Peaks are now
+    set deliberately per sound (step 0.32 · chop 0.85 · pickup 0.60 · craft 0.70 · place 0.75 ·
+    ui 0.30 · eat 0.55 · fire 0.45 · amb 0.50/0.42 · music 0.55) and the regression asserts
+    nothing clips and nothing came out silent.
+  - Loops are **crossfaded into their own heads** (`_seamless`) so there is no seam; the buffer
+    loses the folded-in tail, which is why the printed lengths are shorter than requested.
+  - The theme is **pentatonic on purpose**: every note agrees with every other, so a randomised
+    melody cannot come out wrong — exactly what an endlessly looping background needs.
+- **Three buses** (`default_bus_layout.tres`): Master, Music, SFX. Nothing plays to Master
+  directly. A slider at 0 **mutes the bus**, rather than sitting at -60 dB and still being audible.
+- **⚠️ `PauseMenu` MUST be the FIRST child of `Main.tscn`.** `_unhandled_input` is delivered in
+  reverse tree order, so the node listed *last* hears Esc *first* — and Esc already closes the
+  bag, the craft menu and build mode. First in the tree means the pause menu only ever sees an Esc
+  nothing else wanted. `layer = 8` keeps it drawn on top regardless. **The regression asserts
+  this ordering**, because it looks purely cosmetic in the scene file and is not.
+- **The pause menu pauses; the bag still does not.** It offers to throw the session away, and
+  doing that while a deer wanders past is worse than a moment's stop. `process_mode = ALWAYS` on
+  the menu and on `Audio`'s players, so both keep working through the pause.
+- **⚠️ A Control only gets the viewport's rect when it is a ROOT control** — a child of the window
+  or of a CanvasLayer. Parented to a Node2D it keeps size (0,0): the first `MainMenu` screenshot
+  came out as a clipped panel jammed in the top-left. The engine gives the real main scene the
+  first case; the shot tool had to be told to.
+- **⚠️ Set `process_mode = ALWAYS` BEFORE anything pauses the tree**, not at the step that does
+  it. A node only told to ignore the pause afterwards never runs again to be told — the shot run
+  hung with its last two screenshots untaken.
+- **⚠️ Six "leaked ObjectDB instances" at exit were live audio playbacks**, not a leak: a playback
+  still running when the tree is torn down keeps its stream alive past cleanup. The suite now
+  silences everything in `_finish()`. Six bogus leaks in the output is exactly how a real one
+  would go unnoticed.
+- **Polish, all of it wired to existing signals rather than new plumbing:**
+  floating `+3 Berries` labels **parented to the player** so they travel with them (a screen-space
+  label visibly slides off while you run) · footstep dust and sound **driven by distance, not a
+  timer**, so they stay in step whether walking, running or slowed by cold · a horizontal shiver
+  on the *sprite's* offset when cold (nudging the body would fight the physics and desync the
+  shadow) · fireflies parented to the camera, faded in on `darkness()` **cubed** so they hold off
+  until it is genuinely dark · a `Day 4` toast on `day_passed` · positional fire crackle that
+  follows the *flame*, so an unlit fire is silent.
+- **⚠️ Fireflies need an actual texture.** A CPUParticles2D with none draws a 1px point, which the
+  night CanvasModulate then dims into nothing — the first night shot had no fireflies in it at
+  all. They now carry an 8px radial `GradientTexture2D`. **Measured by frame diff** (fireflies
+  shown vs hidden, same night frame, away from the fire so its glow is not the variable):
+  **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
+  at the screenshot, I was about to call them invisible a second time and they are not.
+- **Regression is 172 checks.** Phase 10 adds 36, including a full save round-trip (bag, clock,
+  warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
+  wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
+  ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
+- **⚠️ Two of Phase 10's first three "failures" were the TEST being wrong, not the code:** the
+  boulder `tree_node` drops stone into the bag, so chopping after setting the inventory up made
+  the asserted counts wrong; and phase 8 already places a workbench, so "restored exactly once"
+  had to become "loading does not *add* one". Measure the baseline, do not assume it.
+- **`tools/phase10_shots.gd`** walks title → settings → day → pickup → toast → night → cold →
+  save → trash → load → pause. The before/after-load pair is the proof: the session is
+  deliberately trashed between them, so an unchanged shot would be a failure, not a pass.
 
 ### ⚠️ Fill tiles at boundaries: checked, and it is NOT what happens
 
@@ -507,7 +601,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-131 checks across every phase built so far; exits non-zero on failure. It exists because a
+172 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

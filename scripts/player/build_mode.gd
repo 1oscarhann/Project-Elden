@@ -92,9 +92,10 @@ func _try_place() -> bool:
 		return false
 	var origin := _cell - Vector2i(int(item.placed_footprint.x) / 2, maxi(1, int(item.placed_footprint.y)) - 1)
 	# Take the item only once the world has actually accepted the building.
-	if room.build_at(item.placed_scene, origin, item.placed_footprint) == null:
+	if room.build_at(item.placed_scene, origin, item.placed_footprint, item.id) == null:
 		return false
 	Inventory.remove_item(_item_id, 1)
+	Audio.play("place")
 	return true
 
 

@@ -87,6 +87,9 @@ var _rng := RandomNumberGenerator.new()
 ## Tiles already taken by scenery or a placed building, so build mode can tell
 ## a free patch of grass from an occupied one without hunting the scene tree.
 var _occupied: Dictionary = {}
+## Buildings the player has put down, as {"item": id, "origin": Vector2i}. The
+## seeded campfire is deliberately NOT in here — it comes back with the island.
+var _placed: Array[Dictionary] = []
 var _spawn_cell := Vector2i.ZERO
 var _bounds := Rect2()
 ## The terrain grid this island was painted from. Kept because terrain is no
@@ -107,6 +110,14 @@ func build() -> void:
 	_grid = grid
 	_rng.seed = generator.last_seed
 
+	# Re-runnable on purpose: loading a save made on a different seed rebuilds
+	# the island, and scenery would otherwise pile up on top of the old lot.
+	for child in props_layer.get_children():
+		if child is Player:
+			continue  # The room manager owns the player, not us.
+		child.queue_free()
+		props_layer.remove_child(child)
+	_placed.clear()
 	_occupied.clear()
 	_paint(grid)
 	# Spawn is chosen before scattering so the clearing can be honoured.
@@ -155,7 +166,9 @@ func can_build(origin: Vector2i, footprint: Vector2i) -> bool:
 
 
 ## Instances a buildable into the y-sorted props layer and marks its tiles.
-func build_at(scene: PackedScene, origin: Vector2i, footprint: Vector2i) -> Node2D:
+## `item_id` is recorded only so a save can put the building back; the world
+## never looks the item up again, so an unrecorded placement still works.
+func build_at(scene: PackedScene, origin: Vector2i, footprint: Vector2i, item_id := "") -> Node2D:
 	if scene == null or not can_build(origin, footprint):
 		return null
 	var node: Node2D = scene.instantiate()
@@ -164,6 +177,8 @@ func build_at(scene: PackedScene, origin: Vector2i, footprint: Vector2i) -> Node
 	node.position = footprint_anchor(origin, footprint)
 	props_layer.add_child(node)
 	_mark(origin, footprint)
+	if not item_id.is_empty():
+		_placed.append({"item": item_id, "origin": origin})
 	return node
 
 
@@ -179,6 +194,88 @@ func _mark(origin: Vector2i, footprint: Vector2i) -> void:
 	for y in maxi(1, footprint.y):
 		for x in maxi(1, footprint.x):
 			_occupied[origin + Vector2i(x, y)] = true
+
+
+# --- persistence ------------------------------------------------------------
+
+## What a save has to carry about the island.
+##
+## The terrain itself is NOT saved: it is a pure function of the seed, so the
+## seed is all that is needed to get the same island back. Only what the player
+## has changed since is written — buildings they placed, trees they chopped,
+## fires they fed. That keeps a save a couple of kilobytes instead of a
+## megabyte of tile ids.
+func save_data() -> Dictionary:
+	var placed: Array = []
+	for entry in _placed:
+		var origin: Vector2i = entry["origin"]
+		placed.append({"item": entry["item"], "cell": [origin.x, origin.y]})
+	return {
+		"seed": generator.last_seed,
+		"placed": placed,
+		"harvestables": _harvestable_states(),
+		"campfires": _campfire_states(),
+	}
+
+
+## Rebuilds the island if the save came from a different seed, then puts back
+## everything the player changed. Animals are deliberately not restored — the
+## spawner refills the island to its caps anyway, and a save is not improved by
+## remembering exactly which hare was standing where.
+func load_data(data: Dictionary) -> void:
+	var saved_seed := int(data.get("seed", generator.last_seed))
+	if saved_seed != generator.last_seed:
+		generator.randomize_seed = false
+		generator.noise_seed = saved_seed
+		build()
+
+	# Buildings first: a harvestable cannot occupy a tile a building is on, and
+	# build_at refuses an occupied cell, so ordering here is load-bearing.
+	for entry in data.get("placed", []):
+		var item := ItemDB.get_item(String(entry.get("item", "")))
+		if item == null or not item.is_placeable():
+			continue
+		var cell: Array = entry.get("cell", [0, 0])
+		build_at(item.placed_scene, Vector2i(int(cell[0]), int(cell[1])),
+			item.placed_footprint, item.id)
+
+	var trees: Dictionary = data.get("harvestables", {})
+	var fires: Dictionary = data.get("campfires", {})
+	for node in props_layer.get_children():
+		var key := _cell_key(world_to_cell(node.position))
+		if node is Harvestable and trees.has(key):
+			(node as Harvestable).load_data(trees[key])
+		elif node is Campfire and fires.has(key):
+			(node as Campfire).load_data(fires[key])
+
+
+## Only harvestables that differ from their freshly-generated state are written,
+## so an untouched island saves an empty dictionary.
+func _harvestable_states() -> Dictionary:
+	var out: Dictionary = {}
+	for node in props_layer.get_children():
+		if not (node is Harvestable):
+			continue
+		var tree := node as Harvestable
+		if tree.is_untouched():
+			continue
+		out[_cell_key(world_to_cell(tree.position))] = tree.save_data()
+	return out
+
+
+func _campfire_states() -> Dictionary:
+	var out: Dictionary = {}
+	for node in props_layer.get_children():
+		if node is Campfire:
+			out[_cell_key(world_to_cell(node.position))] = (node as Campfire).save_data()
+	return out
+
+
+## Cells are the key because a node's position is recoverable from it: scenery
+## is jittered only within its own tile, so the cell round-trips exactly.
+## JSON object keys must be strings, hence the formatting rather than a Vector2i.
+func _cell_key(cell: Vector2i) -> String:
+	return "%d,%d" % [cell.x, cell.y]
 
 
 ## Which terrain a cell was generated as. Returns DEEP_WATER off the map.

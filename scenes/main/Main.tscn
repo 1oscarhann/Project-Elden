@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/room_manager.gd" id="script_rooms"]
 [ext_resource type="PackedScene" path="res://scenes/main/World.tscn" id="world"]
@@ -7,8 +7,17 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/Hotbar.tscn" id="hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InventoryPanel.tscn" id="bag"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CraftMenu.tscn" id="craft"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PauseMenu.tscn" id="pause"]
+[ext_resource type="Script" path="res://scripts/ui/pickup_feed.gd" id="script_feed"]
+[ext_resource type="Script" path="res://scripts/main/game.gd" id="script_game"]
 
 [node name="Main" type="Node2D"]
+script = ExtResource("script_game")
+
+; FIRST on purpose. _unhandled_input runs in reverse tree order, so the node
+; listed first hears Esc LAST — after the bag, the craft menu and build mode
+; have each had their chance to close instead. Its `layer` keeps it on top.
+[node name="PauseMenu" parent="." instance=ExtResource("pause")]
 
 [node name="Rooms" type="Node2D" parent="."]
 script = ExtResource("script_rooms")
@@ -24,3 +33,6 @@ script = ExtResource("script_rooms")
 [node name="InventoryPanel" parent="." instance=ExtResource("bag")]
 
 [node name="CraftMenu" parent="." instance=ExtResource("craft")]
+
+[node name="PickupFeed" type="Node" parent="."]
+script = ExtResource("script_feed")

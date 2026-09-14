@@ -45,6 +45,9 @@ const STAGES: Array = [[0.60, "high"], [0.30, "medium"], [0.10, "low"], [0.0, "e
 @onready var _prompt: Label = $Prompt
 @onready var _warmth_shape: CollisionShape2D = $WarmthArea/CollisionShape2D
 @onready var _station: CraftingStation = $Station
+## Positional, so the crackle fades in as you walk up to the fire and is the
+## cue that tells you where it is at night without looking.
+@onready var _crackle: AudioStreamPlayer2D = $Crackle
 
 var fuel := 0.0
 ## Multiplier tweened by the flare; kept separate so the per-frame size update
@@ -67,6 +70,16 @@ func _ready() -> void:
 	$Interact.body_exited.connect(_on_reach_exited)
 	Inventory.inventory_changed.connect(_on_inventory_changed)
 	_refresh()
+
+
+## --- persistence ------------------------------------------------------------
+
+func save_data() -> Dictionary:
+	return {"fuel": fuel}
+
+
+func load_data(data: Dictionary) -> void:
+	set_fuel(float(data.get("fuel", start_fuel)))
 
 
 ## Give back the heat source if this fire is removed while the player stands in
@@ -137,6 +150,13 @@ func set_fuel(value: float) -> void:
 ## the area and the flame going out have to re-evaluate it. Idempotent, so it can
 ## be called as often as we like without double-counting.
 func _refresh() -> void:
+	# Sound follows the flame, not the player: an unlit fire is silent, and a
+	# lit one crackles whether or not anyone is stood in its warmth.
+	if is_lit() and not _crackle.playing:
+		_crackle.play()
+	elif not is_lit() and _crackle.playing:
+		_crackle.stop()
+
 	var should_warm := _player_in_warmth and is_lit()
 	if should_warm == _heat_applied:
 		return

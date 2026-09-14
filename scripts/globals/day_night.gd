@@ -82,6 +82,24 @@ func darkness() -> float:
 	return 1.0
 
 
+## --- persistence -----------------------------------------------------------
+
+func save_data() -> Dictionary:
+	return {"time_of_day": time_of_day, "day": day}
+
+
+## Sets the clock without emitting day_passed for every day already elapsed —
+## loading day 30 should not fire 29 day-change toasts.
+func load_data(data: Dictionary) -> void:
+	time_of_day = clampf(float(data.get("time_of_day", start_time_of_day)), 0.0, 0.9999)
+	day = maxi(1, int(data.get("day", 1)))
+	var next := phase_at(time_of_day)
+	if next != phase:
+		phase = next
+		phase_changed.emit(phase)
+	ticked.emit(time_of_day)
+
+
 ## 24-hour readout for the debug HUD.
 func clock_text() -> String:
 	var minutes := int(time_of_day * 24.0 * 60.0)

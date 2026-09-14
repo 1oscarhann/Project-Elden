@@ -113,6 +113,23 @@ func consume(item_id: String) -> bool:
 	return false
 
 
+## --- persistence -----------------------------------------------------------
+
+## Everything about the player's condition that a save has to carry.
+## Health and hunger are named by the Phase 10 spec but do not exist yet; when
+## they do, they go here and old saves still load because get() has a default.
+func save_data() -> Dictionary:
+	return {"warmth": warmth}
+
+
+func load_data(data: Dictionary) -> void:
+	# Straight through set_warmth so the HUD and the cold transition both fire,
+	# rather than assigning the field and leaving listeners stale.
+	_was_cold = false
+	warmth = -1.0
+	set_warmth(float(data.get("warmth", MAX_WARMTH)))
+
+
 ## Called by heat sources as the player enters and leaves their radius.
 func add_heat_source() -> void:
 	_heat_sources += 1
