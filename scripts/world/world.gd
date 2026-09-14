@@ -26,6 +26,13 @@ const SRC_WATER_OPEN := 1
 const SRC_SAND := 2
 const SRC_GRASS := 3
 const SRC_WOOD := 4
+## Loose moss patches on transparency. These carry no terrain bits and are the
+## only thing in the pack that can soften a biome edge — the straight-edge
+## TILES do not curve at all (measured: a flat 2px transparent run on every
+## row), so a boundary is only as organic as what is scattered along it.
+const SRC_DETAIL_GRASS := 5
+const SRC_DETAIL_WOOD := 6
+const SRC_DETAIL_SAND := 7
 ## The one corner-match terrain set, and the terrains inside it.
 const TERRAIN_SET := 0
 const T_SAND := 0
@@ -43,6 +50,7 @@ const T_WOOD := 2
 @onready var ground_layer: TileMapLayer = $Sand
 @onready var grass_layer: TileMapLayer = $Grass
 @onready var wood_layer: TileMapLayer = $Woodland
+@onready var detail_layer: TileMapLayer = $Detail
 @onready var props_layer: Node2D = $Props
 @onready var _animals: AnimalSpawner = $Animals
 
@@ -58,6 +66,17 @@ const T_WOOD := 2
 ## enough: a canopy is ~74px tall, so a tree several tiles south still draws
 ## over the player's head.
 @export var spawn_clearing := Vector2(44.0, 48.0)
+
+@export_group("Ground detail")
+## Chance a grass or woodland tile gets a loose moss patch dropped on it. This
+## is what stops the interior reading as one flat colour: only 4 of the sheet's
+## 13 solid grass cells differ from the plain one by more than 6% of pixels, so
+## the autotiler's own variety is nearly invisible on its own.
+@export_range(0.0, 1.0) var detail_chance := 0.16
+## Chance for a tile on the far side of a boundary: sand that touches grass,
+## and shallows that touch sand. Much higher on purpose — these are the patches
+## that overhang the edge and break up the straight line, on both sides.
+@export_range(0.0, 1.0) var edge_detail_chance := 0.62
 
 var _rng := RandomNumberGenerator.new()
 ## Tiles already taken by scenery or a placed building, so build mode can tell
@@ -208,6 +227,64 @@ func _paint(grid: Array) -> void:
 	ground_layer.set_cells_terrain_connect(land, TERRAIN_SET, T_SAND, false)
 	grass_layer.set_cells_terrain_connect(grassy, TERRAIN_SET, T_GRASS, false)
 	wood_layer.set_cells_terrain_connect(woody, TERRAIN_SET, T_WOOD, false)
+	_scatter_detail()
+
+
+## Drops loose moss patches over the finished ground: lightly across grass and
+## woodland for texture, heavily on the sand that touches grass so the beach
+## edge is broken up rather than ruled.
+func _scatter_detail() -> void:
+	detail_layer.clear()
+	var grass_patches := _detail_tiles(SRC_DETAIL_GRASS)
+	var wood_patches := _detail_tiles(SRC_DETAIL_WOOD)
+	var sand_patches := _detail_tiles(SRC_DETAIL_SAND)
+	if grass_patches.is_empty():
+		return
+	for y in generator.map_size.y:
+		for x in generator.map_size.x:
+			var cell := Vector2i(x, y)
+			var terrain := terrain_at(cell)
+			var source := SRC_DETAIL_GRASS
+			var patches := grass_patches
+			var chance := 0.0
+			if terrain == Terrain.FOREST:
+				chance = detail_chance
+				source = SRC_DETAIL_WOOD
+				patches = wood_patches
+			elif terrain == Terrain.GRASS:
+				chance = detail_chance
+			elif terrain == Terrain.SAND and _touches(cell, Terrain.GRASS):
+				# The whole point: green spilling onto the sand, so the eye
+				# reads a ragged shoreline instead of a staircase.
+				chance = edge_detail_chance
+			elif terrain == Terrain.SHALLOW_WATER and _touches(cell, Terrain.SAND):
+				# And sandy shoals spilling the other way, into the shallows.
+				chance = edge_detail_chance
+				source = SRC_DETAIL_SAND
+				patches = sand_patches
+			if chance <= 0.0 or _rng.randf() >= chance:
+				continue
+			detail_layer.set_cell(cell, source, patches[_rng.randi() % patches.size()])
+
+
+## True when any of the four neighbours is at least `terrain`.
+func _touches(cell: Vector2i, terrain: int) -> bool:
+	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		if terrain_at(cell + offset) >= terrain:
+			return true
+	return false
+
+
+## Every patch coord registered in a detail source, read from the tileset so
+## adding art to the sheet needs no change here.
+func _detail_tiles(source: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var atlas := detail_layer.tile_set.get_source(source) as TileSetAtlasSource
+	if atlas == null:
+		return out
+	for i in atlas.get_tiles_count():
+		out.append(atlas.get_tile_id(i))
+	return out
 
 
 ## Walks every tile once and offers it to each harvestable in turn; the first

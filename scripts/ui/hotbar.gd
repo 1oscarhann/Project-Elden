@@ -7,7 +7,7 @@ extends CanvasLayer
 
 @export var slot_scene: PackedScene
 
-@onready var _row: HBoxContainer = $Root/Row
+@onready var _row: HBoxContainer = $Root/Frame/Row
 
 var _slots: Array[ItemSlot] = []
 

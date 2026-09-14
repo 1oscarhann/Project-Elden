@@ -9,9 +9,9 @@ extends CanvasLayer
 @export var cold_tint := Color(0.35, 0.55, 1.0)
 @export_range(0.0, 1.0) var cold_tint_max_alpha := 0.35
 
-@onready var _clock: Label = $Readout/Clock
-@onready var _warmth_label: Label = $Readout/WarmthLabel
-@onready var _warmth_bar: ProgressBar = $Readout/Warmth
+@onready var _clock: Label = $Frame/Readout/Clock
+@onready var _warmth_label: Label = $Frame/Readout/WarmthLabel
+@onready var _warmth_bar: ProgressBar = $Frame/Readout/Warmth
 @onready var _overlay: ColorRect = $ColdOverlay
 
 

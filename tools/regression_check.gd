@@ -32,6 +32,10 @@ var step := 0
 var wait := 0.0
 var quarry: Animal
 var quarry_start := Vector2.ZERO
+## Seconds spent waiting for the wander check. It polls rather than sleeping a
+## fixed span: a deer's rest is up to 6s on top of its initial settle, so any
+## single guess is a coin flip and the check went flaky.
+var wander_waited := 0.0
 
 
 func ck(ok: bool, what: String, detail: String = "") -> void:
@@ -570,12 +574,21 @@ func _phase9_step(delta: float) -> void:
 			ck(quarry.get_node("Agent").get_navigation_map().is_valid(),
 				"the agent found a navigation map")
 			quarry_start = quarry.global_position
-			# Comfortably longer than the longest rest any species takes.
-			wait = 9.0
+			wander_waited = 0.0
 		2:
-			ck(quarry.global_position.distance_to(quarry_start) > 1.0,
-				"a calm animal wanders on its own",
-				"moved %.1fpx" % quarry.global_position.distance_to(quarry_start))
+			# Poll EVERY frame, not on a wait: `wait` short-circuits before this
+			# runs, so accumulating there counted one delta per wait window and
+			# the 25s deadline took 2000 real seconds to reach.
+			#
+			# The threshold is a real distance, not a nudge — a resting animal
+			# drifts a pixel or two settling, and accepting that passed the
+			# check without anything having wandered anywhere.
+			var moved: float = quarry.global_position.distance_to(quarry_start)
+			wander_waited += delta
+			if moved <= 12.0 and wander_waited < 25.0:
+				return
+			ck(moved > 12.0, "a calm animal wanders on its own",
+				"moved %.1fpx after %.1fs" % [moved, wander_waited])
 			# Walk up on it.
 			quarry_start = quarry.global_position
 			player.global_position = quarry.global_position + Vector2(24, 0)

@@ -48,7 +48,7 @@ rock_threshold = 0.68
 script = ExtResource("script_world")
 generator = SubResource("generator")
 campfire_scene = ExtResource("campfire")
-harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_1"), ExtResource("harv_2"), ExtResource("harv_3"), ExtResource("harv_4"), ExtResource("harv_5"), ExtResource("harv_6")])
+harvestables = Array[HarvestableData]([ExtResource("harv_0"), ExtResource("harv_1"), ExtResource("harv_2"), ExtResource("harv_4"), ExtResource("harv_5"), ExtResource("harv_6")])
 harvestable_scene = ExtResource("harvestable_scene")
 
 [node name="Water" type="TileMapLayer" parent="."]
@@ -62,6 +62,9 @@ tile_set = ExtResource("tileset")
 tile_set = ExtResource("tileset")
 
 [node name="Woodland" type="TileMapLayer" parent="."]
+tile_set = ExtResource("tileset")
+
+[node name="Detail" type="TileMapLayer" parent="."]
 tile_set = ExtResource("tileset")
 
 [node name="Props" type="Node2D" parent="."]

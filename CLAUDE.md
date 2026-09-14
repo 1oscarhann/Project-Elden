@@ -108,6 +108,39 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### Terrain + UI corrections (owner review, post-Phase-9)
+
+Five things were called out on review. All five were real; two of my earlier claims were wrong.
+
+- **⚠️ "13 grass variants" was true and meaningless.** 8 of the 13 solid cells differ from the
+  plain one by only **1-6% of pixels**; just 4 carry real detail. The autotiler was mostly
+  choosing between identical tiles. **Fix:** a `Detail` TileMapLayer scattering the sheet's 25
+  **loose moss patches** (the `0000`-corner cells, drawn on transparency) across grass and
+  woodland at `detail_chance`.
+- **⚠️ "Edges curve" was simply wrong.** Measured: a straight-edge grass tile's transparent run is
+  **a flat 2px on every row — the curve spans 0px**. Only the CORNER tiles round off. The pack
+  cannot draw a curved straight edge, full stop. **Fix:** the same loose patches are scattered at
+  `edge_detail_chance` (0.62) on the far side of each boundary — green spilling onto sand, sandy
+  shoals spilling into the shallows — so the eye reads a ragged edge instead of a staircase.
+  This is decoration over a square grid, not a genuinely curved transition; it is as close as
+  this art gets.
+- **Blossom trees are out of the scatter.** They read pink/magenta against this palette and
+  looked like an error. One entry removed from `World.tscn`'s `harvestables`; `tree_blossom.tres`
+  is still there if the palette ever suits it.
+- **The HUD and hotbar now sit in themed `PanelContainer`s.** They were bare labels and loose
+  slots over the world — the theme was working, but nothing had been *put inside a panel*, which
+  is why the GUI still looked unthemed. `hud.gd` and `hotbar.gd` node paths moved under `Frame`.
+- **⚠️ A REAL BUG surfaced by tightening a weak check.** The wander test accepted **>1px after a
+  fixed wait**, which a merely *settling* animal passes. At a real 12px threshold, animals turned
+  out to get **wedged against trees forever** — velocity at full speed, position frozen, target
+  reported perfectly reachable. **The navigation mesh knows about water but not about trees,
+  rocks or buildings**, which are plain StaticBody2D colliders it never saw. `animal.gd` now
+  watches for pushing-without-progress (`STUCK_SECONDS`) and re-targets. The proper fix is
+  carving scenery out of the mesh — `World._occupied` already holds the data.
+- **The wander check polls instead of sleeping.** First attempt accumulated `delta` inside a
+  `wait` window that short-circuits before the poll runs, so a 25s deadline took **2000 real
+  seconds** and the suite timed out. Poll every frame.
+
 ### Terrain rebuild (post-Phase-9)
 
 - **The island is LAYERED now, not one flat grid of terrain rows.** Sea under every cell, then

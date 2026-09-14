@@ -14,29 +14,40 @@ grow_vertical = 2
 color = Color(0.35, 0.55, 1, 0)
 mouse_filter = 2
 
-[node name="Readout" type="VBoxContainer" parent="."]
-anchors_preset = 0
-offset_left = 6.0
+[node name="Frame" type="PanelContainer" parent="."]
+offset_left = 5.0
 offset_top = 4.0
-offset_right = 260.0
+offset_right = 197.0
 offset_bottom = 70.0
+mouse_filter = 2
+
+[node name="Readout" type="VBoxContainer" parent="Frame"]
+layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 1
 
-[node name="Clock" type="Label" parent="Readout"]
+[node name="Clock" type="Label" parent="Frame/Readout"]
 layout_mode = 2
+theme_type_variation = &"PanelText"
+theme_override_font_sizes/font_size = 11
 text = "Day 1   08:00   DAY"
 
-[node name="WarmthLabel" type="Label" parent="Readout"]
+[node name="WarmthLabel" type="Label" parent="Frame/Readout"]
 layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
 text = "Warmth 100"
 
-[node name="Warmth" type="ProgressBar" parent="Readout"]
-custom_minimum_size = Vector2(120, 8)
+[node name="Warmth" type="ProgressBar" parent="Frame/Readout"]
+custom_minimum_size = Vector2(120, 9)
 layout_mode = 2
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="Hint" type="Label" parent="Readout"]
+[node name="Hint" type="Label" parent="Frame/Readout"]
 layout_mode = 2
-text = "WASD · Shift run · E use · Tab bag · C craft · B build · F consume"
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 7
+text = "WASD · Shift run · E use · Tab bag
+C craft · B build · F consume"

@@ -18,6 +18,16 @@ enum State { REST, WANDER, FLEE, DEAD }
 
 ## Close enough to a wander target to call it arrived.
 const ARRIVE_EPSILON := 4.0
+## Candidate wander points to try before giving up for this rest.
+const WANDER_ATTEMPTS := 8
+## How far a candidate may be dragged when snapped to the navigation mesh
+## before we treat it as off-mesh entirely.
+const WANDER_TOLERANCE := 20.0
+## Seconds of pushing without getting anywhere before an animal gives up on its
+## current target and picks another.
+const STUCK_SECONDS := 0.7
+## Below this much progress per second, it is not making headway.
+const STUCK_SPEED := 6.0
 ## Seconds the corpse lies there before fading, so a kill reads as an event.
 const LINGER_SECONDS := 0.9
 const FADE_SECONDS := 0.5
@@ -44,6 +54,8 @@ var _rest_left := 0.0
 var _flee_left := 0.0
 var _hits := 0
 var _hurt_left := 0.0
+var _stuck_time := 0.0
+var _last_position := Vector2.ZERO
 var _player_in_reach := false
 var _threat: Node2D
 var _rng := RandomNumberGenerator.new()
@@ -69,6 +81,7 @@ func _ready() -> void:
 	_detector.body_exited.connect(_on_lost)
 	_reach.body_entered.connect(_on_reach_entered)
 	_reach.body_exited.connect(_on_reach_exited)
+	_last_position = global_position
 	_rest(_rng.randf_range(0.2, 1.6))
 
 
@@ -163,9 +176,39 @@ func _physics_process(delta: float) -> void:
 					_pick_escape()
 				_steer(data.flee_speed, delta)
 	move_and_slide()
+	_check_stuck(delta)
 	# Let the hurt clip finish rather than popping straight back to a run.
 	if _hurt_left <= 0.0:
 		_animate()
+
+
+## ⚠️ The navigation mesh knows about water but NOT about trees, rocks or
+## buildings — those are plain StaticBody2D colliders the mesh never saw. So an
+## animal will happily path straight through a trunk, wedge against it with the
+## engine reporting a perfectly reachable target, and push there forever.
+##
+## Watching for pushing-without-progress and re-targeting is what stops that
+## being permanent. The proper fix is carving scenery out of the mesh, which
+## `World._occupied` already has the data for.
+func _check_stuck(delta: float) -> void:
+	if _state != State.WANDER and _state != State.FLEE:
+		_last_position = global_position
+		_stuck_time = 0.0
+		return
+	var progress := global_position.distance_to(_last_position) / maxf(delta, 0.0001)
+	_last_position = global_position
+	# Only counts as stuck if it is actually trying to move.
+	if velocity.length() < STUCK_SPEED or progress > STUCK_SPEED:
+		_stuck_time = 0.0
+		return
+	_stuck_time += delta
+	if _stuck_time < STUCK_SECONDS:
+		return
+	_stuck_time = 0.0
+	if _state == State.FLEE:
+		_pick_escape()
+	else:
+		_wander()
 
 
 ## Walk the path the agent hands us. The agent owns *where*; we own *how fast*.
@@ -184,12 +227,36 @@ func _rest(seconds: float) -> void:
 	_rest_left = seconds
 
 
+## ⚠️ The target must be ON the navigation mesh, not merely near home.
+##
+## Picking a raw point around home means an animal living near the shore aims
+## into the sea most of the time. The agent then reports the path finished
+## immediately, the animal rests, picks another sea target, and loops — stuck
+## on the spot for good while looking idle rather than broken. Snapping each
+## candidate to the mesh and rejecting the ones that land far from where we
+## asked is what makes a coastal animal actually walk.
 func _wander() -> void:
 	_state = State.WANDER
-	# Around home, not around here, so a long flee does not leave it homeless.
-	var angle := _rng.randf() * TAU
-	var reach := _rng.randf_range(data.wander_range * 0.3, data.wander_range)
-	_target(_home + Vector2.RIGHT.rotated(angle) * reach)
+	var map := _agent.get_navigation_map()
+	for attempt in WANDER_ATTEMPTS:
+		# Around home, not around here, so a long flee does not leave it homeless.
+		var angle := _rng.randf() * TAU
+		var reach := _rng.randf_range(data.wander_range * 0.3, data.wander_range)
+		var want := _home + Vector2.RIGHT.rotated(angle) * reach
+		if not map.is_valid():
+			_target(want)
+			return
+		var landed := NavigationServer2D.map_get_closest_point(map, want)
+		# Far from where we asked means the mesh does not reach there at all.
+		if landed.distance_to(want) > WANDER_TOLERANCE:
+			continue
+		# And too close to here is not a walk worth taking.
+		if landed.distance_to(global_position) < ARRIVE_EPSILON * 3.0:
+			continue
+		_target(landed)
+		return
+	# Genuinely hemmed in. Rest and try again rather than spin.
+	_rest(_rng.randf_range(data.rest_min, data.rest_max))
 
 
 func _startle(threat: Node2D) -> void:

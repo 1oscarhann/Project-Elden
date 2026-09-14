@@ -79,6 +79,13 @@ func _initialize() -> void:
 	ok = _add_terrain(ts, 2, SHEETS["sand"], T_SAND, true) and ok
 	ok = _add_terrain(ts, 3, SHEETS["grass"], T_GRASS, false) and ok
 	ok = _add_terrain(ts, 4, SHEETS["wood"], T_WOOD, false) and ok
+	# Loose moss patches drawn on transparency. They carry no terrain bits, so
+	# they live in their own source and the autotiler can never pick them.
+	_add_detail(ts, 5, SHEETS["grass"])
+	_add_detail(ts, 6, SHEETS["wood"])
+	# Sand is the grass blob re-hued, so it carries the same patches — which is
+	# what lets the shoreline be broken up from the sea side too.
+	_add_detail(ts, 7, SHEETS["sand"])
 
 	var err := ResourceSaver.save(ts, "res://assets/tiles/island_terrain.tres")
 	print("\n".join(_report))
@@ -153,6 +160,40 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 			"" if missing.is_empty() else "  MISSING %s" % str(missing)])
 	_report.append("    solid-interior variants (texture variety): %d" % int(found.get(15, 0)))
 	return missing.is_empty()
+
+
+## The loose patch cells: content, but no corner is this terrain. They are the
+## sheet's decoration, and they are the only thing in the pack that can break up
+## a straight biome edge — the straight-edge TILES do not curve at all (their
+## transparent run is a flat 2px on every row), so the boundary is only ever as
+## organic as what is scattered along it.
+func _add_detail(ts: TileSet, id: int, path: String) -> void:
+	var tex: Texture2D = load(path)
+	var img := tex.get_image()
+	img.convert(Image.FORMAT_RGBA8)
+	var src := TileSetAtlasSource.new()
+	src.texture = tex
+	src.texture_region_size = TILE
+	ts.add_source(src, id)
+	var cols := img.get_width() / TILE.x
+	var rows := img.get_height() / TILE.y
+	var n := 0
+	for cy in rows:
+		for cx in cols:
+			var coord := Vector2i(cx, cy)
+			if _corner_bits(img, coord) != 0:
+				continue
+			# Skip blank cells; a patch has to actually have ink in it.
+			var ink := 0
+			for y in TILE.y:
+				for x in TILE.x:
+					if img.get_pixel(cx * TILE.x + x, cy * TILE.y + y).a > 0.16:
+						ink += 1
+			if ink < 12:
+				continue
+			src.create_tile(coord)
+			n += 1
+	_report.append("detail  src %d %-16s %d loose patches" % [id, path.get_file(), n])
 
 
 ## Probe the four extreme corners of a cell. 2x2 px, right in the corner —
