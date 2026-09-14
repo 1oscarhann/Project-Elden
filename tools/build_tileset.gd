@@ -25,6 +25,17 @@ extends SceneTree
 const TILE := Vector2i(16, 16)
 const WATER_FPS := 0.45
 
+## Straight-edge signatures: two adjacent corners set (top, right, left, bottom).
+const STRAIGHT_EDGES := [3, 5, 10, 12]
+## ⚠️ How much weight the pack's FLAT straight edges keep against the generated
+## wavy ones. Godot picks uniformly among equally-good matches, so with 2 flat
+## and 3 wavy candidates a straight run came out 40% ruler-straight — which is
+## what still read as geometric even though every boundary cell was correctly
+## an edge tile and not a fill. At 0.2 the flat ones drop to about 12%, which
+## keeps a few genuinely straight stretches without the whole coast looking
+## drawn with a ruler.
+const FLAT_EDGE_WEIGHT := 0.2
+
 ## Terrain indices within the single corner-match terrain set.
 const T_SAND := 0
 const T_GRASS := 1
@@ -157,6 +168,10 @@ func _add_terrain(ts: TileSet, id: int, path: String, terrain: int, navigable: b
 			for i in 4:
 				if bits & (1 << i):
 					data.set_terrain_peering_bit(CORNERS[i], terrain)
+			# Bias away from the pack's flat straight edges (see FLAT_EDGE_WEIGHT).
+			# Only the main sources carry them; the generated sheets stay at 1.0.
+			if require_complete and bits in STRAIGHT_EDGES:
+				data.probability = FLAT_EDGE_WEIGHT
 			if navigable:
 				var nav := NavigationPolygon.new()
 				nav.vertices = PackedVector2Array([

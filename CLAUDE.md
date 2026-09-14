@@ -108,6 +108,24 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 **Phase 9 complete.** Next up: `docs/phases/phase10_polish.md`.
 
+### ⚠️ Fill tiles at boundaries: checked, and it is NOT what happens
+
+A review suspected the generator was placing FILL (all-corners) tiles at boundary positions
+because the peering bits were mis-wired. Scanned the whole island: **0 fill tiles at a boundary**
+on all three layers (Sand 3889 cells, Grass 3028, Woodland 1027). It is structurally impossible
+in corner-match mode — a foreign neighbour shares two of a cell's corners, so those bits cannot
+be set and a fill tile is unselectable there. **The regression now asserts it permanently**, so
+the question never has to be re-litigated.
+
+- **What WAS still making straight runs look ruled:** Godot picks uniformly among equally-good
+  matches, and a straight-edge position had **2 flat originals + 3 generated wavy** candidates —
+  so **40% of straight edges came out flat**, every one of them a correct edge tile.
+- **`FLAT_EDGE_WEIGHT` (0.2)** sets `TileData.probability` on the pack's flat straight edges only.
+  Flat share drops from **40% to ~12%**, which keeps a few genuinely straight stretches without
+  the coast looking drawn with a ruler. Asserted at under 25%.
+- Tile census per terrain source: **13 fill · 10 two-corner · 20 corner/inner**, plus 12 wavy
+  straight edges in the generated sheet.
+
 ### Biome SHAPES (the other half of the blocky-edge problem)
 
 Wavy edge tiles fixed how a boundary is *drawn*. These fix what shape the regions are in the

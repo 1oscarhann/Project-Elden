@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 134
+const EXPECTED_CHECKS := 136
 
 var f := 0
 var fails := 0
@@ -255,6 +255,55 @@ func _phase2() -> void:
 				tiny += 1
 	ck(tiny == 0, "every woodland grove is a real region, not speckle",
 		"%d groves, %d under %d cells" % [groves, tiny, world.generator.min_grove_cells])
+
+	# ⚠️ The signature of a mis-wired bitmask: a FILL tile (all four corners its
+	# own terrain) sitting where the layer has a foreign neighbour. In
+	# corner-match this should be unselectable — a foreign neighbour shares two
+	# of the cell's corners, so those bits cannot be set — but wiring the bits
+	# wrong would break exactly that guarantee, silently and everywhere.
+	var fills_at_boundary := 0
+	var flat_edges := 0
+	var wavy_edges := 0
+	var straight := {3: true, 5: true, 10: true, 12: true}
+	for pair in [["Sand", World.SRC_SAND_EDGES], ["Grass", World.SRC_GRASS_EDGES],
+			["Woodland", World.SRC_WOOD_EDGES]]:
+		var layer: TileMapLayer = world.get_node(pair[0])
+		var occupied := {}
+		for c in layer.get_used_cells():
+			occupied[c] = true
+		for c in layer.get_used_cells():
+			var atlas := ts.get_source(layer.get_cell_source_id(c)) as TileSetAtlasSource
+			var data := atlas.get_tile_data(layer.get_cell_atlas_coords(c), 0)
+			var b := 0
+			for i in 4:
+				if data.get_terrain_peering_bit([TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER,
+						TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
+						TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER,
+						TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER][i]) != -1:
+					b |= 1 << i
+			if straight.has(b):
+				if layer.get_cell_source_id(c) == pair[1]:
+					wavy_edges += 1
+				else:
+					flat_edges += 1
+			if b != 15:
+				continue
+			for dy in [-1, 0, 1]:
+				for dx in [-1, 0, 1]:
+					if dx == 0 and dy == 0:
+						continue
+					if not occupied.has(c + Vector2i(dx, dy)):
+						fills_at_boundary += 1
+						dy = 2
+						break
+	ck(fills_at_boundary == 0,
+		"no fill tile sits at a boundary — every edge resolves to an edge tile",
+		str(fills_at_boundary))
+	# And the flat originals must stay a minority, or the coast reads as ruled
+	# even though every tile is technically correct.
+	var flat_share := 100.0 * flat_edges / maxf(flat_edges + wavy_edges, 1.0)
+	ck(flat_share < 25.0, "wavy edges dominate the straight runs",
+		"%.0f%% flat of %d straight edges" % [flat_share, flat_edges + wavy_edges])
 
 	ck(props.y_sort_enabled, "props layer is y-sorted")
 
