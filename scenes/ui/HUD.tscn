@@ -18,7 +18,7 @@ mouse_filter = 2
 offset_left = 5.0
 offset_top = 4.0
 offset_right = 197.0
-offset_bottom = 70.0
+offset_bottom = 112.0
 mouse_filter = 2
 
 [node name="Readout" type="VBoxContainer" parent="Frame"]
@@ -45,12 +45,38 @@ max_value = 100.0
 value = 100.0
 show_percentage = false
 
+[node name="HungerLabel" type="Label" parent="Frame/Readout"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Hunger 100"
+
+[node name="Hunger" type="ProgressBar" parent="Frame/Readout"]
+custom_minimum_size = Vector2(120, 9)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="ThirstLabel" type="Label" parent="Frame/Readout"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Thirst 100"
+
+[node name="Thirst" type="ProgressBar" parent="Frame/Readout"]
+custom_minimum_size = Vector2(120, 9)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
 [node name="Hint" type="Label" parent="Frame/Readout"]
 layout_mode = 2
 theme_type_variation = &"PanelTextDim"
 theme_override_font_sizes/font_size = 7
 text = "WASD · Shift run · E use · Tab bag
-C craft · B build · F consume · Esc menu"
+C craft · B build · F eat · E drink · Esc menu"
 
 [node name="Toast" type="Label" parent="."]
 modulate = Color(1, 1, 1, 0)

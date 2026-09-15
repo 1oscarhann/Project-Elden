@@ -106,9 +106,70 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE — all ten phases built, 192 regression checks green.** What is left is
+**PROJECT v1 COMPLETE + Phase 11 (v2 item 0) — 225 regression checks green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
+
+### Phase 11 notes — Hunger & Thirst (first v2 item)
+
+Spec: `docs/phases/phase11_hunger_thirst.md`, arrived via the `v2/` drop-in along with
+`docs/ROADMAP_V2.md` (which is where the rest of v2 is planned).
+
+- **Three spec-vs-reality conflicts, flagged not improvised:**
+  1. The doc says "build this BEFORE Phase 10" and "then proceed to Phase 10" — but Phase 10 had
+     already shipped, and `ROADMAP_V2` itself lists hunger/thirst as **v2 item 0, after 0-10**.
+     The phase doc predates that. Built now, with the juice folded in here rather than deferred;
+     listed AFTER 10 in the roadmap, because that is the real build order.
+  2. The doc asks for `hunger_restore` / `thirst_restore` fields on `ItemData`. Reality:
+     `stats` is a free-form dictionary built for exactly this, **five items already carried a
+     `hunger` value** from Phase 7, and `consume()` already read it. Dedicated fields would
+     duplicate a working mechanism and orphan that data. Uses `stats["hunger"]` / `stats["thirst"]`.
+  3. Freshwater: no fresh/ocean distinction existed — but inland pools already did.
+- **⚠️ Fresh water is CLASSIFIED, not generated.** `_mark_fresh_water()` floods inward from the
+  map border through water: whatever it reaches is the ocean, and any wet cell it cannot reach is
+  a lagoon. **Measured: 5 pools / 47 cells on the shipped seed; across 20 seeds every one had at
+  least 2, 4.7 on average.** No new art, no generation change, no risk to the terrain invariants.
+  Sea water can therefore never quench thirst — asserted against 400 sea cells.
+- **⚠️ INSERTING A TERRAIN VALUE SILENTLY REPOINTED EVERY .tres.** `HarvestableData` and
+  `AnimalData` store `spawn_terrains` as **raw integers**, so adding `FRESH_WATER` at index 2
+  turned `tree_palm`'s "sand, grass" into "fresh water, sand". Nothing errored; the regression
+  caught it as a *building placement* failure three checks away. All ten data files renumbered,
+  and **the enum is now pinned by a check** so it can never shift silently again.
+- Drains are slow on purpose: `hunger_drain` 0.55/s and `thirst_drain` 0.75/s — about 3 and 2.2
+  in-game days from full. Background pressure, not a chore.
+- **Penalties are soft and enforced to be.** Below `low_threshold` (20) each stat eases in a
+  warmth-drain multiplier (up to x1.8 with both empty) and a small speed factor (x0.85 each).
+  Asserted: `speed_factor()` never reaches zero, the stats never go negative, and **`GameState`
+  has no health, damage or death at all**.
+- **Raw meat is edible, just poor.** It carried NO hunger value, so "cooked beats raw" was
+  trivially true because raw was not food. Now 10/9/14 against 30/28/45 cooked — cooking at least
+  doubles it, which is the Phase 7 incentive the spec actually asks for. Asserted.
+- **Drinking is the LAST thing `interact` can mean.** Harvestables, animals and the campfire all
+  consume E from their own Area2Ds first, so the player only ever sees an E nothing else wanted —
+  standing at a pond never stops you chopping the tree beside it.
+- HUD gained hunger and thirst bars that tint when low; eating and drinking reuse the pickup
+  feed's floating text (`+30 Food`, `+35 Water`) so all three read as one language.
+
+### ⚠️ The hut could be entered but NEVER left — a one-tile doorway is not passable
+
+Reported as "no way to exit the hut", and correct. The exit existed and worked; the player could
+not fit through it.
+
+- **The player's collision box was 16px wide and the doorway is 16px wide.** Centred in the gap it
+  spans exactly 80..96 with the solid jambs at 79 and 97, touches both at once, and
+  `move_and_slide` refuses to move. Entering worked because the outside door is a free-standing
+  Area2D with no jambs — so the bug looked like "the exit is missing".
+- **Fix: the body is 12px wide.** A character wants to be narrower than the gaps it walks through.
+  Asserted: `body width < tile - 1`.
+- **⚠️ Furniture had no collision at all** — `Bed`, `Table` and `Chair` were bare `Sprite2D`s.
+  They now carry a `StaticBody2D` sized to their FOOTPRINT rather than their sprite (Y-sorting
+  already draws a headboard over the player). The `Rug` deliberately has none — you walk on a rug.
+  Walls were fine all along: measured `collision_enabled`, one physics layer, and the player
+  stopped dead at every one.
+- **⚠️ Two testing traps worth not repeating.** Teleporting onto a trigger "works" when walking
+  into it does not, so it hid this bug completely. And **looping `move_and_slide` inside a single
+  frame never fires `body_entered`** — overlaps are evaluated once per physics flush, so a tight
+  loop teleports the body past a trigger between two samples. Walk one step per `physics_frame`.
 
 ### Phase 10 notes
 
@@ -191,7 +252,7 @@ page. All of that is data or packaging, not new systems.
   shown vs hidden, same night frame, away from the fire so its glow is not the variable):
   **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
   at the screenshot, I was about to call them invisible a second time and they are not.
-- **Regression is 192 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
+- **Regression is 225 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
   warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
   wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
   ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
@@ -860,7 +921,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-192 checks across every phase built so far; exits non-zero on failure. It exists because a
+225 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

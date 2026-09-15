@@ -40,3 +40,19 @@ front of scenery.
 - Add day/night tint (Phase 3).
 
 Update ROADMAP + CLAUDE.md when done.
+
+## Terrain decision (updated)
+No hill/stone terrain — it caused autotiling issues and isn't needed. World terrain is **grass +
+sand/beach + water only**. Stone is NOT a mined biome; it comes from harvestable rock objects
+(see Phase 5). Bigger, more contiguous biomes preferred: larger map (tunable) + lower noise
+frequency so grass/sand form large continuous zones, with tree/bush density scaled up to match.
+
+## Forest vs. field density (added — status: fixed, ground/boundary tiles confirmed working)
+Tree/bush density should VARY across the grass biome to create distinct forest zones (thick,
+dense tree cover, hard to see ground) and open field zones (grassy, few/no trees, open to run
+through) — not one uniform medium density blanketing the island. Implementation: use a second
+noise layer (independent of the biome-type noise) to drive density specifically, so this doesn't
+reopen the biome-boundary/autotile work — high-density regions from this noise become forest,
+low-density become fields, with natural medium-density areas between. Scale bush/rock placement
+to complement (denser in forest, sparser in fields). This is a density/placement tweak only, not
+a new biome type or tileset change.

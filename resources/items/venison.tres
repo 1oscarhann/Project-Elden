@@ -15,4 +15,4 @@ icon = SubResource("icon")
 max_stack = 20
 category = 1
 description = "A heavy haunch. Cooks into something worth the walk."
-stats = {}
+stats = {"hunger": 14.0}

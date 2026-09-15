@@ -31,6 +31,10 @@ extends Node
 
 ## Labels currently alive, used only to work out where the next one goes.
 var _live := 0
+## Previous values, so a GAIN can be told from the constant slow drain. Only a
+## gain is worth announcing; nobody needs a label every frame they get hungrier.
+var _last_hunger := 0.0
+var _last_thirst := 0.0
 ## Its own layer, above the world and below the pause menu.
 var _layer: CanvasLayer
 
@@ -40,6 +44,26 @@ func _ready() -> void:
 	_layer.layer = 5
 	add_child(_layer)
 	Inventory.item_gained.connect(_on_item_gained)
+	# Eating and drinking get the same floating text as a pickup, so all three
+	# read as one language of feedback rather than three.
+	GameState.hunger_changed.connect(_on_hunger_changed)
+	GameState.thirst_changed.connect(_on_thirst_changed)
+	_last_hunger = GameState.hunger
+	_last_thirst = GameState.thirst
+
+
+func _on_hunger_changed(value: float) -> void:
+	var gain := value - _last_hunger
+	_last_hunger = value
+	if gain >= 1.0:
+		_float("+%d Food" % roundi(gain), Color(0.95, 0.82, 0.52))
+
+
+func _on_thirst_changed(value: float) -> void:
+	var gain := value - _last_thirst
+	_last_thirst = value
+	if gain >= 1.0:
+		_float("+%d Water" % roundi(gain), Color(0.62, 0.85, 0.96))
 
 
 func _on_item_gained(id: String, count: int) -> void:
@@ -47,12 +71,20 @@ func _on_item_gained(id: String, count: int) -> void:
 	if player == null:
 		return
 	_fly_to_hotbar(id, player)
+	_float("+%d %s" % [count, ItemDB.display_name(id)], Color(1.0, 0.98, 0.88))
+
+
+## One rising, fading label over the player.
+func _float(text: String, colour: Color) -> void:
+	var player := _player()
+	if player == null:
+		return
 	var label := Label.new()
-	label.text = "+%d %s" % [count, ItemDB.display_name(id)]
+	label.text = text
 	# Not themed: this sits over the world, where the theme's dark parchment
 	# text would be unreadable. Light with an outline, like the HUD labels.
 	label.add_theme_font_size_override("font_size", 8)
-	label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.88))
+	label.add_theme_color_override("font_color", colour)
 	label.add_theme_color_override("font_outline_color", Color(0.12, 0.10, 0.08))
 	label.add_theme_constant_override("outline_size", 4)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

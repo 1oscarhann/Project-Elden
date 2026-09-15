@@ -8,10 +8,16 @@ extends CanvasLayer
 ## Overlay colour applied as the player gets cold.
 @export var cold_tint := Color(0.35, 0.55, 1.0)
 @export_range(0.0, 1.0) var cold_tint_max_alpha := 0.35
+## Applied to a stat bar once it drops to GameState.low_threshold.
+const LOW_TINT := Color(1.0, 0.72, 0.55)
 
 @onready var _clock: Label = $Frame/Readout/Clock
 @onready var _warmth_label: Label = $Frame/Readout/WarmthLabel
 @onready var _warmth_bar: ProgressBar = $Frame/Readout/Warmth
+@onready var _hunger_label: Label = $Frame/Readout/HungerLabel
+@onready var _hunger_bar: ProgressBar = $Frame/Readout/Hunger
+@onready var _thirst_label: Label = $Frame/Readout/ThirstLabel
+@onready var _thirst_bar: ProgressBar = $Frame/Readout/Thirst
 @onready var _overlay: ColorRect = $ColdOverlay
 @onready var _toast: Label = $Toast
 
@@ -23,8 +29,12 @@ func _ready() -> void:
 	GameState.warmth_changed.connect(_on_warmth_changed)
 	GameState.cold_changed.connect(_on_cold_changed)
 	DayNight.day_passed.connect(_on_day_passed)
+	GameState.hunger_changed.connect(_on_hunger_changed)
+	GameState.thirst_changed.connect(_on_thirst_changed)
 	_on_ticked(DayNight.time_of_day)
 	_on_warmth_changed(GameState.warmth)
+	_on_hunger_changed(GameState.hunger)
+	_on_thirst_changed(GameState.thirst)
 
 
 func _on_ticked(_time_of_day: float) -> void:
@@ -35,6 +45,20 @@ func _on_warmth_changed(warmth: float) -> void:
 	_warmth_bar.value = warmth
 	_warmth_label.text = "Warmth %d%s" % [int(warmth), "  (by the fire)" if GameState.is_warmed() else ""]
 	_overlay.color = Color(cold_tint, GameState.chill() * cold_tint_max_alpha)
+
+
+## Both bars tint as they run low, the same cue the warmth bar uses when cold —
+## a colour change rather than a number to read.
+func _on_hunger_changed(value: float) -> void:
+	_hunger_bar.value = value
+	_hunger_label.text = "Hunger %d" % int(value)
+	_hunger_bar.modulate = LOW_TINT if value <= GameState.low_threshold else Color.WHITE
+
+
+func _on_thirst_changed(value: float) -> void:
+	_thirst_bar.value = value
+	_thirst_label.text = "Thirst %d" % int(value)
+	_thirst_bar.modulate = LOW_TINT if value <= GameState.low_threshold else Color.WHITE
 
 
 func _on_cold_changed(is_cold: bool) -> void:

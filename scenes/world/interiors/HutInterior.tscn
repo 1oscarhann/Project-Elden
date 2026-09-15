@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/interior.gd" id="script_interior"]
 [ext_resource type="Script" path="res://scripts/world/door.gd" id="script_door"]
@@ -20,6 +20,15 @@ region = Rect2(48, 49, 16, 14)
 [sub_resource type="AtlasTexture" id="tex_chair"]
 atlas = ExtResource("furniture")
 region = Rect2(64, 33, 16, 13)
+
+[sub_resource type="RectangleShape2D" id="shape_bed"]
+size = Vector2(14, 18)
+
+[sub_resource type="RectangleShape2D" id="shape_table"]
+size = Vector2(14, 8)
+
+[sub_resource type="RectangleShape2D" id="shape_chair"]
+size = Vector2(10, 6)
 
 [sub_resource type="RectangleShape2D" id="shape_exit"]
 size = Vector2(14, 10)
@@ -47,15 +56,39 @@ position = Vector2(40, 48)
 texture = SubResource("tex_bed")
 offset = Vector2(0, -11)
 
+[node name="Body" type="StaticBody2D" parent="Props/Bed"]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/Bed/Body"]
+position = Vector2(0, -9)
+shape = SubResource("shape_bed")
+
 [node name="Table" type="Sprite2D" parent="Props"]
 position = Vector2(104, 48)
 texture = SubResource("tex_table")
 offset = Vector2(0, -7)
 
+[node name="Body" type="StaticBody2D" parent="Props/Table"]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/Table/Body"]
+position = Vector2(0, -4)
+shape = SubResource("shape_table")
+
 [node name="Chair" type="Sprite2D" parent="Props"]
 position = Vector2(120, 48)
 texture = SubResource("tex_chair")
 offset = Vector2(0, -6)
+
+[node name="Body" type="StaticBody2D" parent="Props/Chair"]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/Chair/Body"]
+position = Vector2(0, -3)
+shape = SubResource("shape_chair")
 
 [node name="Entry" type="Marker2D" parent="."]
 

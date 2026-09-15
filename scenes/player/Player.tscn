@@ -34,7 +34,11 @@ fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
 
 [sub_resource type="RectangleShape2D" id="shape_feet"]
-size = Vector2(16, 8)
+; ⚠️ 12 wide, NOT 16. A 16px body in a 16px doorway has zero clearance: centred
+; in the gap it touches both jambs at once and move_and_slide refuses to pass,
+; so the hut could be entered (its outside door is a free-standing Area2D) but
+; never left. A character wants to be narrower than the gaps it walks through.
+size = Vector2(12, 8)
 
 [node name="Player" type="CharacterBody2D"]
 motion_mode = 1

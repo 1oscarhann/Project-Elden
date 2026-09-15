@@ -35,5 +35,5 @@ flee_memory = 1.8
 hits_required = 1
 drops = Array[HarvestDrop]([SubResource("drop_poultry"), SubResource("drop_bone")])
 puff_colour = Color(0.35, 0.32, 0.36, 1)
-spawn_terrains = Array[int]([2, 3, 4])
+spawn_terrains = Array[int]([3, 4, 5])
 population = 10

@@ -32,8 +32,20 @@ const STOP_EPSILON := 1.0
 @export var shiver_pixels := 0.7
 @export var shiver_hz := 11.0
 
+@export_group("Eating and drinking")
+## How far from fresh water the player can drink, in tiles.
+@export_range(1, 4) var drink_reach_tiles := 1
+## Thirst restored by one drink. A pond is free and unlimited, so this is
+## deliberately modest — the cost of water is the walk to it.
+@export var drink_restore := 35.0
+@export var drink_colour := Color(0.55, 0.78, 0.92, 0.85)
+@export var eat_colour := Color(0.92, 0.72, 0.42, 0.85)
+
 @onready var _sprite: AnimatedSprite2D = $Sprite
 @onready var _dust: CPUParticles2D = $Dust
+## The dust's own colour, so a consume splash can borrow the emitter and hand it
+## back rather than needing an emitter of its own.
+@onready var _dust_colour: Color = $Dust.color
 
 ## Pixels left to walk before the next footstep.
 var _stride_left := 0.0
@@ -76,9 +88,20 @@ func _on_animation_finished() -> void:
 	_swinging = false
 
 
-## Use whatever is in the selected hotbar slot. The player decides WHEN, the
-## item's own data decides WHAT — nothing here knows about warmth tonics.
+## Use whatever is in the selected hotbar slot, or drink from fresh water.
+##
+## The player decides WHEN, the item's own data decides WHAT — nothing here
+## knows about warmth tonics or how filling a roast is.
+##
+## ⚠️ Drinking is deliberately the LAST thing `interact` can mean. Harvestables,
+## animals and the campfire all consume the event from their own Area2Ds first;
+## this only ever sees an E that nothing else wanted, so standing at a pond
+## never stops you chopping the tree beside it.
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("interact"):
+		if _try_drink():
+			get_viewport().set_input_as_handled()
+		return
 	if not event.is_action_pressed("use_item"):
 		return
 	var id := Inventory.selected_item_id()
@@ -87,7 +110,36 @@ func _unhandled_input(event: InputEvent) -> void:
 	if GameState.consume(id):
 		Inventory.remove_item(id, 1)
 		Audio.play("eat")
+		_splash(drink_colour if ItemDB.get_item(id).stat("thirst", 0.0) > 0.0 else eat_colour)
 		get_viewport().set_input_as_handled()
+
+
+## Drink if a freshwater cell is in reach. Returns false when there is none, or
+## when there is nothing to gain, so the key falls through.
+func _try_drink() -> bool:
+	var rooms := get_tree().get_nodes_in_group(RoomManager.GROUP)
+	if rooms.is_empty():
+		return false
+	var room := (rooms[0] as RoomManager).current_room()
+	if room == null or not room.has_method("can_drink_at"):
+		return false
+	if not room.can_drink_at(global_position, drink_reach_tiles):
+		return false
+	if not GameState.drink(drink_restore):
+		return false
+	Audio.play("eat")
+	_splash(drink_colour)
+	return true
+
+
+## A small burst in the colour of whatever was just consumed. Reuses the dust
+## emitter rather than adding a second one — it is already a one-shot.
+func _splash(colour: Color) -> void:
+	_dust.color = colour
+	_dust.restart()
+	_dust.emitting = true
+	# Put it back, or every footstep after this puffs the wrong colour.
+	_dust.color = _dust_colour
 
 
 func _physics_process(delta: float) -> void:

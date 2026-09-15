@@ -290,6 +290,21 @@ func terrain_at(cell: Vector2i) -> int:
 	return int(row[cell.x])
 
 
+## Can the player drink where they are standing?
+##
+## True when a FRESH_WATER cell is within `reach` tiles. Sea water is excluded
+## by the terrain value itself rather than by a check here — the generator
+## labels any water the open sea cannot reach as fresh, so salt water simply
+## never answers yes.
+func can_drink_at(position: Vector2, reach := 1) -> bool:
+	var centre := world_to_cell(position)
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			if terrain_at(centre + Vector2i(dx, dy)) == Terrain.FRESH_WATER:
+				return true
+	return false
+
+
 func world_to_cell(position: Vector2) -> Vector2i:
 	return ground_layer.local_to_map(ground_layer.to_local(position))
 

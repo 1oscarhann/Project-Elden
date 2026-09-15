@@ -33,5 +33,5 @@ regrow_seconds = 75.0
 blocks_movement = true
 sprite_scale = 1.0
 particle_colour = Color(0.62, 0.62, 0.64, 1)
-spawn_terrains = Array[int]([2, 3, 4])
+spawn_terrains = Array[int]([3, 4, 5])
 spawn_chance = 0.02

@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 192
+const EXPECTED_CHECKS := 225
 
 var f := 0
 var fails := 0
@@ -78,6 +78,7 @@ func _process(delta: float) -> void:
 	_phase8()
 	_phase9()
 	_phase10()
+	_phase11()
 	print("\n-- Phase 9b: wildlife over time --")
 
 
@@ -718,6 +719,173 @@ func _count_scene(path: String) -> int:
 	return total
 
 
+func _phase11() -> void:
+	print("\n-- Phase 11: hunger and thirst --")
+	# ⚠️ PIN THE ENUM. Every HarvestableData and AnimalData stores its
+	# spawn_terrains as RAW INTEGERS, so inserting a value into Terrain
+	# silently re-points all of them — adding FRESH_WATER at index 2 turned
+	# tree_palm's "sand, grass" into "fresh water, sand" and nothing complained.
+	# If this check fails, the .tres files need renumbering to match.
+	ck(IslandGenerator.Terrain.DEEP_WATER == 0
+		and IslandGenerator.Terrain.SHALLOW_WATER == 1
+		and IslandGenerator.Terrain.FRESH_WATER == 2
+		and IslandGenerator.Terrain.SAND == 3
+		and IslandGenerator.Terrain.GRASS == 4
+		and IslandGenerator.Terrain.FOREST == 5,
+		"Terrain values match what the .tres files store as raw ints")
+	# And the ordering the code relies on: all water sorts below all land.
+	ck(IslandGenerator.Terrain.FRESH_WATER < IslandGenerator.FIRST_WALKABLE,
+		"fresh water still sorts as water, so every land test keeps working")
+	var off_terrain: Array = []
+	for data in world.harvestables:
+		if data == null:
+			continue
+		for t in data.spawn_terrains:
+			if int(t) < IslandGenerator.FIRST_WALKABLE:
+				off_terrain.append("%s on %d" % [data.resource_path.get_file(), t])
+	ck(off_terrain.is_empty(), "nothing is scattered onto water", str(off_terrain))
+	# --- the stats exist and drain ---
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
+	var before_h := GameState.hunger
+	var before_t := GameState.thirst
+	GameState._process(2.0)
+	ck(GameState.hunger < before_h, "hunger drains over time",
+		"%.1f -> %.1f" % [before_h, GameState.hunger])
+	ck(GameState.thirst < before_t, "thirst drains over time",
+		"%.1f -> %.1f" % [before_t, GameState.thirst])
+	# Slow enough to be background pressure, not a treadmill.
+	ck(GameState.hunger_drain < 2.0 and GameState.thirst_drain < 2.0,
+		"and slowly — this is a cozy game, not a chore",
+		"%.2f / %.2f per second" % [GameState.hunger_drain, GameState.thirst_drain])
+
+	# --- NO death, NO damage, ever ---
+	GameState.set_hunger(0.0)
+	GameState.set_thirst(0.0)
+	GameState._process(10.0)
+	ck(GameState.hunger == 0.0 and GameState.thirst == 0.0,
+		"empty stats sit at zero rather than going negative")
+	ck(GameState.speed_factor() > 0.0, "and never stop the player dead",
+		"speed factor %.2f" % GameState.speed_factor())
+	var lethal: Array = []
+	for name in ["health", "damage", "die", "kill"]:
+		if GameState.has_method(name) or name in GameState:
+			lethal.append(name)
+	ck(lethal.is_empty(), "GameState has no health, damage or death at all", str(lethal))
+
+	# --- the penalty is soft, and it IS applied ---
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
+	var fed_speed := GameState.speed_factor()
+	var fed_bite := GameState.deprivation_multiplier()
+	GameState.set_hunger(0.0)
+	GameState.set_thirst(0.0)
+	ck(GameState.speed_factor() < fed_speed, "running empty slows the player a little",
+		"%.2f vs %.2f" % [GameState.speed_factor(), fed_speed])
+	ck(GameState.speed_factor() > 0.4, "but only a little", str(GameState.speed_factor()))
+	ck(GameState.deprivation_multiplier() > fed_bite,
+		"and makes the cold bite sooner",
+		"warmth drain x%.2f vs x%.2f" % [GameState.deprivation_multiplier(), fed_bite])
+	ck(GameState.is_deprived(), "which the HUD can ask about directly")
+
+	# --- eating ---
+	GameState.set_hunger(10.0)
+	Inventory.clear()
+	Inventory.add_item("cooked_meat", 1)
+	var hungry := GameState.hunger
+	ck(GameState.consume("cooked_meat"), "cooked meat can be eaten")
+	ck(GameState.hunger > hungry, "and restores hunger",
+		"%.0f -> %.0f" % [hungry, GameState.hunger])
+	# Cooking has to be worth doing (the Phase 7 incentive).
+	var raw := ItemDB.get_item("raw_meat").stat("hunger", 0.0)
+	var cooked := ItemDB.get_item("cooked_meat").stat("hunger", 0.0)
+	# Raw has to be EDIBLE for the comparison to mean anything — "cooked beats
+	# raw" is trivially true if raw is not food at all, which it was.
+	ck(raw > 0.0, "raw meat is edible, just poor", "%.0f hunger" % raw)
+	ck(cooked >= raw * 2.0, "and cooking at least doubles it, so it pays",
+		"%.0f vs %.0f" % [cooked, raw])
+	# Juicy things quench a little; meat does not.
+	ck(ItemDB.get_item("fruit").stat("thirst", 0.0) > 0.0, "fruit quenches a little too")
+	ck(ItemDB.get_item("cooked_meat").stat("thirst", 0.0) == 0.0, "but meat does not")
+	ck(not GameState.consume("wood"), "a log is not food")
+
+	# --- drinking, and the sea NOT counting ---
+	var fresh: Array[Vector2i] = []
+	var sea: Array[Vector2i] = []
+	for y in world.generator.map_size.y:
+		for x in world.generator.map_size.x:
+			var cell := Vector2i(x, y)
+			var t := world.terrain_at(cell)
+			if t == IslandGenerator.Terrain.FRESH_WATER:
+				fresh.append(cell)
+			elif t == IslandGenerator.Terrain.SHALLOW_WATER and sea.size() < 400:
+				sea.append(cell)
+	ck(not fresh.is_empty(), "the island has fresh water on it", "%d cells" % fresh.size())
+	ck(world.can_drink_at(Vector2(fresh[0] * 16) + Vector2(8, 8)),
+		"which can be drunk from", str(fresh[0]))
+	var salty := 0
+	for cell in sea:
+		if world.can_drink_at(Vector2(cell * 16) + Vector2(8, 8)):
+			salty += 1
+	ck(salty == 0, "and SEA water never can — it is salt water", "%d of %d sea cells" % [salty, sea.size()])
+
+	GameState.set_thirst(20.0)
+	var dry := GameState.thirst
+	ck(GameState.drink(30.0), "drinking restores thirst")
+	ck(GameState.thirst > dry, "", "%.0f -> %.0f" % [dry, GameState.thirst])
+	GameState.set_thirst(GameState.MAX_THIRST)
+	ck(not GameState.drink(30.0), "and is refused when already full, so E falls through")
+
+	# --- fresh water is INLAND by construction ---
+	# Flood from the border: anything it reaches is ocean, so no cell it reaches
+	# may be labelled fresh.
+	var reached := {}
+	var queue: Array[Vector2i] = []
+	var size: Vector2i = world.generator.map_size
+	var wet := func(c: Vector2i) -> bool:
+		return world.terrain_at(c) < IslandGenerator.Terrain.SAND
+	for x in size.x:
+		for y in [0, size.y - 1]:
+			var c := Vector2i(x, y)
+			if wet.call(c) and not reached.has(c):
+				reached[c] = true
+				queue.append(c)
+	while not queue.is_empty():
+		var c: Vector2i = queue.pop_back()
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var n: Vector2i = c + d
+			if n.x < 0 or n.y < 0 or n.x >= size.x or n.y >= size.y:
+				continue
+			if reached.has(n) or not wet.call(n):
+				continue
+			reached[n] = true
+			queue.append(n)
+	var leaked := 0
+	for cell in fresh:
+		if reached.has(cell):
+			leaked += 1
+	ck(leaked == 0, "no freshwater cell touches the open sea", "%d leaked" % leaked)
+
+	# --- persistence ---
+	GameState.set_hunger(37.0)
+	GameState.set_thirst(58.0)
+	var snapshot := GameState.save_data()
+	GameState.set_hunger(100.0)
+	GameState.set_thirst(100.0)
+	GameState.load_data(snapshot)
+	ck(is_equal_approx(GameState.hunger, 37.0) and is_equal_approx(GameState.thirst, 58.0),
+		"both survive a save and load", "%.0f / %.0f" % [GameState.hunger, GameState.thirst])
+
+	# --- HUD ---
+	var hud := get_node("Main/HUD")
+	ck(hud.get_node_or_null("Frame/Readout/Hunger") != null, "the HUD shows a hunger bar")
+	ck(hud.get_node_or_null("Frame/Readout/Thirst") != null, "and a thirst bar")
+
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
+	Inventory.clear()
+
+
 ## Free, buildable cells spiralling out from `centre`, nearest first.
 func _free_cells_near(centre: Vector2i, radius: int) -> Array:
 	var out: Array = []
@@ -845,6 +1013,17 @@ func _check_interior_walls() -> void:
 			leaky += 1
 	ck(leaky == 0, "every wall cell is solid, side posts included", "%d leaky" % leaky)
 
+	# ⚠️ Walkable is not the same as PASSABLE. The doorway is one tile wide, so a
+	# 16px-wide player centred in it touches both jambs at once and
+	# move_and_slide refuses to move — the hut could be entered (its outside
+	# door is a free-standing Area2D with no jambs) but never left. The player's
+	# body must be narrower than the gap.
+	var body := player.get_node("CollisionShape2D") as CollisionShape2D
+	var body_width: float = (body.shape as RectangleShape2D).size.x
+	var tile: float = float(layer.tile_set.tile_size.x)
+	ck(body_width < tile - 1.0, "the player fits THROUGH a one-tile doorway",
+		"body %.0fpx wide vs a %.0fpx gap" % [body_width, tile])
+
 	var door_cell: Vector2i = room.call("_door_cell")
 	var door_solid := src.get_tile_data(layer.get_cell_atlas_coords(door_cell), 0) \
 		.get_collision_polygons_count(0) > 0
@@ -852,6 +1031,17 @@ func _check_interior_walls() -> void:
 	ck(layer.get_cell_atlas_coords(door_cell) != room.floor_tile,
 		"and is drawn as a door, not as bare floor",
 		str(layer.get_cell_atlas_coords(door_cell)))
+
+	# Furniture you should bump into, and a rug you should not.
+	var solid_props: Array = []
+	var loose_props: Array = []
+	for prop in room.get_node("Props").get_children():
+		if prop.get_node_or_null("Body") != null:
+			solid_props.append(prop.name)
+		else:
+			loose_props.append(prop.name)
+	ck(solid_props.size() >= 3, "interior furniture carries collision", str(solid_props))
+	ck(loose_props.has("Rug"), "except the rug, which you walk on", str(loose_props))
 	room.queue_free()
 
 
