@@ -261,6 +261,41 @@ menus, settings, transitions, screen shake and the feedback bullet were all ther
   save is marked optional in the spec and is still skipped: the spawner refills to its caps on
   load, so storing counts would change nothing.
 
+### Verifying the terrain look holds in ANY area, not just one spot
+
+The owner approved a 6x-zoom shot of a grass/sand/water boundary as the standard. One spot
+looking right is not the claim — **`tools/boundary_montage.gd`** samples real boundary cells from
+all over the map, at that same 6x zoom, and tiles them into one contact sheet:
+
+    xvfb-run -a godot --path . --rendering-driver opengl3 res://tools/boundary_montage.tscn
+
+- **12 samples, 3 of each boundary kind** (grass/sand, sand/water, woodland/grass, woodland/sand),
+  forced at least `SPREAD` (14) tiles apart so no two come from the same neighbourhood.
+- It clears the camera's world bounds first, or a coastal sample cannot be centred.
+- **Checked this pass and all clean:** 12 boundaries + 4 biome interiors + 3 full-frame
+  woodland/grass views. Every one matches the approved standard — curved boundaries, tufts on
+  both sides, no hard edges.
+- **⚠️ A montage crop is not proof on its own.** Three woodland/grass samples looked like they had
+  straight vertical boundaries in the 320x180 montage cells; rendered full-frame they are plainly
+  curved. Judge a suspicion at full size before acting on it.
+- **Tuft coverage, measured:** sand 26.4%, grass 16.6%, woodland 15.9% of cells. Interiors were a
+  worry after patches dropped from 25 to 4 — measured and rendered, they read fine.
+
+### The hut interior uses 2 of the wall sheet's 14 usable cells
+
+Audited for the first time (an earlier pass silently skipped it — the check was `async` and the
+caller did not await it, so it never ran before `quit()`).
+
+- `interior_tileset.tres` holds **exactly two tiles**: floor `(1,1)` and wall `(1,0)`. There is no
+  terrain set and no autotiling at all, so it **cannot** pick a wrong-category tile — the room is
+  a hand-painted wall ring.
+- **Straight walls and 90 degree corners are CORRECT here.** The no-sharp-edge rule is for the
+  *terrain* tileset; a room is architecture, and blob-ifying it would be absurd.
+- **But the art is under-used:** `Wooden_House_Walls_Tilset.png` is 5x3 cells — **7 fully solid,
+  7 partial, 1 blank** — and only 2 are registered. There are no distinct corner or side pieces,
+  so the same horizontal plank texture runs round all four walls, and the doorway has no frame.
+  That is a polish opportunity, not a defect.
+
 ### ⚠️ The hard green rectangles on the sand were the DETAIL layer
 
 Found by looking at a boundary at 6x zoom instead of at play zoom. The terrain tiling was already
