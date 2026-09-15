@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 188
+const EXPECTED_CHECKS := 192
 
 var f := 0
 var fails := 0
@@ -221,6 +221,7 @@ func _phase2() -> void:
 	_check_drawable(world.get_node("Sand").tile_set)
 	_check_no_sharp_edges()
 	_check_detail_is_loose()
+	_check_interior_walls()
 
 	# ⚠️ Structural, not cosmetic: sand is a distance from water, so an inland
 	# beach is impossible by construction rather than by tuning. This check is
@@ -563,10 +564,16 @@ func _phase8() -> void:
 	# Bigger on the inside is the whole point of the phase.
 	ck(inside.room_size.x * inside.room_size.y > 3 * 3, "and is bigger inside than out",
 		"%dx%d vs 3x3" % [inside.room_size.x, inside.room_size.y])
+	# ⚠️ Counted by WALKABILITY, not by "which tile is painted there". The
+	# doorway used to be a hole of bare floor tile; it is a proper door piece
+	# now, so a check that looked for the floor tile in the bottom row found
+	# nothing and failed while the doorway was perfectly fine.
+	var wall_src := floor_layer.tile_set.get_source(0) as TileSetAtlasSource
 	var doorway: Array = floor_layer.get_used_cells().filter(
 		func(c: Vector2i) -> bool: return c.y == inside.room_size.y - 1 \
-			and floor_layer.get_cell_atlas_coords(c) == inside.floor_tile)
-	ck(doorway.size() == 1, "exactly one gap in the wall ring", str(doorway.size()))
+			and wall_src.get_tile_data(floor_layer.get_cell_atlas_coords(c), 0) \
+				.get_collision_polygons_count(0) == 0)
+	ck(doorway.size() == 1, "exactly one way through the wall ring", str(doorway.size()))
 	ck(inside.get_node("ExitDoor").position.distance_to(inside.get_node("Entry").position) > 0.0,
 		"you do not arrive standing on the exit")
 	ck(not inside.camera_bounds().has_area() or inside.camera_bounds().size.x < world.camera_bounds().size.x,
@@ -797,6 +804,55 @@ func _check_drawable(ts: TileSet) -> void:
 			"%d cells, %d wrong%s" % [region.size(), wrong, first])
 		ck(undrawable == 0, "%s: no cell is outside every 2x2 block of its own terrain" % layer_name,
 			"%d such cells" % undrawable)
+
+
+## The interior room uses the piece drawn for each side, and its doorway is a
+## real opening you can walk through.
+##
+## It used to paint ONE horizontal plank tile round all four sides, so the side
+## walls ran horizontally, there were no corners, and the doorway was a tongue
+## of bare cream floor. The sheet is a house facade: column 0 is the left frame
+## post, column 2 the right, column 1 the plank infill, and (3,2) has a doorway.
+func _check_interior_walls() -> void:
+	var scene := load("res://scenes/world/interiors/HutInterior.tscn") as PackedScene
+	var room := scene.instantiate() as Interior
+	add_child(room)
+	var layer: TileMapLayer = room.get_node("Floor")
+	var ts: TileSet = layer.tile_set
+	var src := ts.get_source(0) as TileSetAtlasSource
+
+	var sides := {}
+	var size: Vector2i = room.room_size
+	sides["top"] = layer.get_cell_atlas_coords(Vector2i(size.x / 2, 0))
+	sides["bottom"] = layer.get_cell_atlas_coords(Vector2i(1, size.y - 1))
+	sides["left"] = layer.get_cell_atlas_coords(Vector2i(0, size.y / 2))
+	sides["right"] = layer.get_cell_atlas_coords(Vector2i(size.x - 1, size.y / 2))
+	var distinct := {}
+	for k in sides:
+		distinct[sides[k]] = true
+	ck(distinct.size() == 4, "each wall side uses the piece drawn for it",
+		"%d distinct of 4: %s" % [distinct.size(), str(sides)])
+
+	# Every wall cell must stop the player; the doorway must not.
+	var leaky := 0
+	for cell in layer.get_used_cells():
+		var edge: bool = cell.x == 0 or cell.y == 0 \
+			or cell.x == size.x - 1 or cell.y == size.y - 1
+		var solid := src.get_tile_data(layer.get_cell_atlas_coords(cell), 0) \
+			.get_collision_polygons_count(0) > 0
+		var door: bool = cell == room.call("_door_cell")
+		if edge and not door and not solid:
+			leaky += 1
+	ck(leaky == 0, "every wall cell is solid, side posts included", "%d leaky" % leaky)
+
+	var door_cell: Vector2i = room.call("_door_cell")
+	var door_solid := src.get_tile_data(layer.get_cell_atlas_coords(door_cell), 0) \
+		.get_collision_polygons_count(0) > 0
+	ck(not door_solid, "the doorway is walkable, so the exit works", str(door_cell))
+	ck(layer.get_cell_atlas_coords(door_cell) != room.floor_tile,
+		"and is drawn as a door, not as bare floor",
+		str(layer.get_cell_atlas_coords(door_cell)))
+	room.queue_free()
 
 
 ## ⚠️ A detail patch must be a loose tuft, never a block.

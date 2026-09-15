@@ -106,7 +106,7 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE — all ten phases built, 188 regression checks green.** What is left is
+**PROJECT v1 COMPLETE — all ten phases built, 192 regression checks green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
 
@@ -191,7 +191,7 @@ page. All of that is data or packaging, not new systems.
   shown vs hidden, same night frame, away from the fire so its glow is not the variable):
   **2379 of 230400 px differ, 1.03% of the screen, peak delta 229/255.** Worth doing — squinting
   at the screenshot, I was about to call them invisible a second time and they are not.
-- **Regression is 188 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
+- **Regression is 192 checks.** Phase 10 adds 42, including a full save round-trip (bag, clock,
   warmth, fire fuel, a chopped tree, a placed building), the newer-format refusal, the bus
   wiring, a **PCM scan of every generated sound** for clipping and silence, and the pause-menu
   ordering invariant. Bump `EXPECTED_CHECKS` when adding more.
@@ -291,10 +291,27 @@ caller did not await it, so it never ran before `quit()`).
   a hand-painted wall ring.
 - **Straight walls and 90 degree corners are CORRECT here.** The no-sharp-edge rule is for the
   *terrain* tileset; a room is architecture, and blob-ifying it would be absurd.
-- **But the art is under-used:** `Wooden_House_Walls_Tilset.png` is 5x3 cells — **7 fully solid,
-  7 partial, 1 blank** — and only 2 are registered. There are no distinct corner or side pieces,
-  so the same horizontal plank texture runs round all four walls, and the doorway has no frame.
-  That is a polish opportunity, not a defect.
+- **The art was under-used, and now is not.** `Wooden_House_Walls_Tilset.png` is 5x3 cells —
+  **7 fully solid, 7 partial, 1 blank** — and only 2 were registered, so one horizontal plank
+  texture ran round all four walls and the doorway was a tongue of bare cream floor.
+
+#### The sheet is a house FACADE — read the art, not the filename
+
+- **Column 0 is the left frame post** (opaque on its RIGHT, transparent left), **column 2 the
+  right post** (mirrored), **column 1** the plank infill plus the cream brick, and **(3,2) carries
+  a doorway opening**. That orientation drops straight into a room with no flipping: a left wall
+  wants its opaque side facing the interior, which is exactly how column 0 is drawn.
+- **Six tiles registered now**, and `Interior._tile_for()` picks per side: planks along the top
+  and bottom rows (corners included, so the room keeps a solid band), posts down the spans
+  between, and the door piece at the doorway.
+- **The side posts are only ~31% opaque but still collide across the whole cell**, or the player
+  walks into the gap beside the post.
+- **The doorway is walkable and drawn as a door.** Asserted both ways: it must have no collision,
+  and it must not be the bare floor tile.
+- **⚠️ This broke a Phase 8 check that was measuring the wrong thing.** "Exactly one gap in the
+  wall ring" counted bottom-row cells painted with the FLOOR tile — the old representation of a
+  hole. With a real door piece there it found 0 and failed, while the doorway was perfectly fine.
+  It counts by **walkability** now, which is the property that actually matters.
 
 ### ⚠️ The hard green rectangles on the sand were the DETAIL layer
 
@@ -843,7 +860,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-188 checks across every phase built so far; exits non-zero on failure. It exists because a
+192 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

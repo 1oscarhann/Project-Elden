@@ -15,9 +15,18 @@ extends Room
 ## Interior size in tiles, INCLUDING the wall ring. Deliberately far bigger
 ## than the building's footprint outside — that is the whole conceit.
 @export var room_size := Vector2i(10, 7)
-## Atlas cells in assets/tiles/interior_tileset.tres.
+## Atlas cells in assets/tiles/interior_tileset.tres. The sheet is a house
+## facade, so each side of the room takes the piece drawn for it: horizontal
+## planks along the top and bottom, and the frame posts down the sides. Painting
+## one tile round all four sides ran the side walls horizontally and left the
+## doorway as a tongue of bare floor.
 @export var floor_tile := Vector2i(1, 1)
-@export var wall_tile := Vector2i(1, 0)
+@export var wall_top := Vector2i(1, 0)
+@export var wall_bottom := Vector2i(1, 2)
+@export var wall_left := Vector2i(0, 1)
+@export var wall_right := Vector2i(2, 1)
+## A plank wall with an opening cut in it — walkable, because it is the exit.
+@export var door_tile := Vector2i(3, 2)
 
 @onready var _floor: TileMapLayer = $Floor
 @onready var _backdrop: ColorRect = $Backdrop
@@ -41,13 +50,24 @@ func _ready() -> void:
 func _paint_room() -> void:
 	for y in room_size.y:
 		for x in room_size.x:
-			var cell := Vector2i(x, y)
-			var edge := x == 0 or y == 0 or x == room_size.x - 1 or y == room_size.y - 1
-			# The doorway is a gap in the bottom wall, so it reads as a way out.
-			if edge and cell == _door_cell():
-				_floor.set_cell(cell, 0, floor_tile)
-			else:
-				_floor.set_cell(cell, 0, wall_tile if edge else floor_tile)
+			_floor.set_cell(Vector2i(x, y), 0, _tile_for(Vector2i(x, y)))
+
+
+## Which piece belongs at a cell. The top and bottom rows run right across,
+## corners included, so the room keeps a solid band top and bottom and the posts
+## only fill the span between — which is how the facade itself is drawn.
+func _tile_for(cell: Vector2i) -> Vector2i:
+	if cell == _door_cell():
+		return door_tile
+	if cell.y == 0:
+		return wall_top
+	if cell.y == room_size.y - 1:
+		return wall_bottom
+	if cell.x == 0:
+		return wall_left
+	if cell.x == room_size.x - 1:
+		return wall_right
+	return floor_tile
 
 
 func _door_cell() -> Vector2i:
