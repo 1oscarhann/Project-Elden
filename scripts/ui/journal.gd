@@ -311,11 +311,46 @@ func _refresh() -> void:
 			entry["button"].disabled = not can
 			# Grey the whole row so an unreachable branch still reads as a branch.
 			entry["row"].modulate = Color.WHITE if can else Color(1, 1, 1, 0.45)
+		_sort_craft_rows()
 	elif _current == "build":
 		_refresh_build()
 		_status.text = "Build"
 	else:
 		_status.text = "Bag"
+
+
+## ⚠️ What you can make NOW floats to the top, then what the station you are
+## stood at offers, then the rest.
+##
+## Found by rendering rather than by reading: walking to a cook pot and opening
+## the menu showed Bone Tool, Campfire Kit, Fence and Plank — the four dishes
+## the pot exists for were below the fold behind nineteen alphabetical rows.
+## Nothing is hidden or removed, because a visible locked branch is how the
+## player learns the tree exists; the order just stops burying the answer.
+func _sort_craft_rows() -> void:
+	var ranked := _craft_rows.duplicate()
+	ranked.sort_custom(func(a, b):
+		var ra := _craft_rank(a["recipe"])
+		var rb := _craft_rank(b["recipe"])
+		if ra != rb:
+			return ra < rb
+		# Alphabetical inside a band, so the list does not reshuffle on every
+		# refresh as ingredient counts tick past a threshold.
+		return ItemDB.display_name(a["recipe"].result_item_id) \
+			< ItemDB.display_name(b["recipe"].result_item_id))
+	for i in ranked.size():
+		var row: Control = ranked[i]["row"]
+		row.get_parent().move_child(row, i)
+
+
+## 0 = craftable right now · 1 = needs a station you are standing at, but you
+## are short of materials · 2 = everything else.
+func _craft_rank(recipe: RecipeData) -> int:
+	if Crafting.can_craft(recipe):
+		return 0
+	if recipe.needs_station() and Crafting.has_station(recipe.required_station):
+		return 1
+	return 2
 
 
 ## "2 / 4 plank · 1 / 2 stone", plus why it is blocked if a station is missing.

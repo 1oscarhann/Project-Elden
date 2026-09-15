@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/crafting_station.gd" id="script_station"]
+[ext_resource type="Texture2D" path="res://assets/objects/cook_pot.png" id="tex_pot"]
+
+[sub_resource type="RectangleShape2D" id="shape_body"]
+size = Vector2(12, 7)
+
+[sub_resource type="CircleShape2D" id="shape_station"]
+radius = 28.0
+
+[node name="CookPot" type="Node2D"]
+
+; The sprite is built bottom-aligned inside its 16px cell by
+; tools/build_cookpot_sprite.gd, so half a cell up puts its base on the origin
+; — which is the point Y-sorting compares.
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("tex_pot")
+offset = Vector2(0, -8)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+position = Vector2(0, -3)
+shape = SubResource("shape_body")
+
+; Same counted registration as the campfire and the workbench. `active` is left
+; at its default true: unlike the campfire, a pot does not need lighting.
+[node name="Station" type="Area2D" parent="."]
+script = ExtResource("script_station")
+station_id = "cookpot"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Station"]
+shape = SubResource("shape_station")

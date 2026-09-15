@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/recipe_data.gd" id="script_recipe"]
+[ext_resource type="Script" path="res://scripts/world/recipe_ingredient.gd" id="script_ingredient"]
+
+[sub_resource type="Resource" id="ing_roast_venison"]
+script = ExtResource("script_ingredient")
+item_id = "roast_venison"
+count = 1
+
+[sub_resource type="Resource" id="ing_roast_poultry"]
+script = ExtResource("script_ingredient")
+item_id = "roast_poultry"
+count = 1
+
+[sub_resource type="Resource" id="ing_fibre"]
+script = ExtResource("script_ingredient")
+item_id = "fibre"
+count = 3
+
+[resource]
+script = ExtResource("script_recipe")
+id = "game_pie"
+result_item_id = "game_pie"
+result_count = 1
+ingredients = Array[RecipeIngredient]([SubResource("ing_roast_venison"), SubResource("ing_roast_poultry"), SubResource("ing_fibre")])
+required_station = "cookpot"
+unlocked_by_default = true
+category = "food"

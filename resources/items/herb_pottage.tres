@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://cjjw1fg4dug6b" path="res://assets/icons/items_food.png" id="sheet"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(288, 288, 32, 32)
+
+[resource]
+script = ExtResource("script_item")
+id = "herb_pottage"
+display_name = "Herb Pottage"
+icon = SubResource("icon")
+max_stack = 10
+category = 1
+description = "Thin, green and startlingly warming."
+stats = {"hunger": 22.0, "thirst": 12.0, "warmth": 34.0}

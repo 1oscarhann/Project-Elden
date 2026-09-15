@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 309
+const EXPECTED_CHECKS := 335
 
 var f := 0
 var fails := 0
@@ -82,6 +82,7 @@ func _process(delta: float) -> void:
 	_journal()
 	_intro()
 	_phase12()
+	_phase13()
 	print("\n-- Phase 9b: wildlife over time --")
 
 
@@ -1253,6 +1254,203 @@ func _phase12() -> void:
 	Inventory.clear()
 	GameState.set_hunger(GameState.MAX_HUNGER)
 	GameState.set_thirst(GameState.MAX_THIRST)
+
+
+## Phase 13 — cooking depth (v2 item C).
+##
+## ⚠️ THE "MINIMUM" BULLET OF ITEM C WAS ALREADY BUILT. It asks for
+## "raw_meat + campfire -> cooked_meat, cooked restores more than raw" — which
+## shipped in Phase 7, was extended in Phase 9 (venison, poultry) and is already
+## asserted in Phase 11 ("cooking at least doubles it"). So this phase is the
+## DEPTH bullet: "multi-ingredient recipes -> dishes with different restore
+## profiles. A cooking station/pot as a crafting station."
+func _phase13() -> void:
+	print("\n-- Phase 13: cooking depth --")
+	# The minimum, confirmed still standing rather than re-proved from scratch.
+	var simple := 0
+	for recipe in Crafting.all_recipes():
+		if recipe.required_station == "campfire" and recipe.ingredients.size() == 1:
+			simple += 1
+	ck(simple >= 3, "the campfire still roasts single ingredients", "%d recipes" % simple)
+
+	# --- the pot ---
+	var pot := ItemDB.get_item("cook_pot")
+	ck(pot != null, "there is a cook pot")
+	ck(pot != null and pot.is_placeable(), "which is placed in the world, not carried")
+	var pot_recipe: RecipeData = null
+	for recipe in Crafting.all_recipes():
+		if recipe.result_item_id == "cook_pot":
+			pot_recipe = recipe
+	ck(pot_recipe != null, "and is crafted rather than found")
+	ck(pot_recipe != null and pot_recipe.required_station == "workbench",
+		"at the workbench, so it sits one branch deeper than the campfire")
+	# The scene must carry the station, or a placed pot would cook nothing.
+	var scene := (pot.placed_scene as PackedScene).instantiate()
+	var station := scene.get_node_or_null("Station") as CraftingStation
+	ck(station != null, "a placed pot carries a crafting station")
+	ck(station != null and station.station_id == "cookpot", "with its own id",
+		station.station_id if station else "")
+	# Counted registration, the same shape as the campfire and the workbench.
+	ck(station != null and station.active, "and unlike a campfire it needs no lighting")
+	scene.queue_free()
+
+	# --- the dishes ---
+	var dishes: Array[RecipeData] = []
+	for recipe in Crafting.all_recipes():
+		if recipe.required_station == "cookpot":
+			dishes.append(recipe)
+	ck(dishes.size() >= 4, "the pot has a menu of its own", "%d dishes" % dishes.size())
+	var single := 0
+	for recipe in dishes:
+		if recipe.ingredients.size() < 2:
+			single += 1
+	ck(single == 0, "every one of them combines MULTIPLE ingredients", "%d did not" % single)
+
+	# ⚠️ The spec's actual words: "dishes with DIFFERENT RESTORE PROFILES".
+	# Assert each stat is what some dish is best at, so the menu is a real
+	# choice rather than four versions of the same meal.
+	var dominant := {}
+	var profiles := {}
+	for recipe in dishes:
+		var item := ItemDB.get_item(recipe.result_item_id)
+		var best := ""
+		var best_value := -1.0
+		var profile: PackedStringArray = []
+		for stat in ["hunger", "thirst", "warmth"]:
+			var value := item.stat(stat, 0.0)
+			profile.append("%.0f" % value)
+			if value > best_value:
+				best_value = value
+				best = stat
+		dominant[best] = true
+		profiles[recipe.result_item_id] = "/".join(profile)
+	ck(dominant.has("hunger") and dominant.has("thirst") and dominant.has("warmth"),
+		"and each of hunger, thirst and warmth is some dish's speciality",
+		str(dominant.keys()))
+	var shapes := {}
+	for id in profiles:
+		shapes[profiles[id]] = true
+	ck(shapes.size() == profiles.size(), "no two dishes have the same profile",
+		str(profiles))
+
+	# ⚠️ THE design invariant: combining must PAY. A dish has to beat eating its
+	# own ingredients raw, or the whole branch is a trap that costs the player
+	# food to use. Measured per dish rather than asserted in the abstract.
+	var losers: Array = []
+	var lines: Array = []
+	for recipe in dishes:
+		var out := _food_value(recipe.result_item_id) * recipe.result_count
+		var raw := 0.0
+		for ing in recipe.ingredients:
+			raw += _food_value(ing.item_id) * ing.count
+		lines.append("%s %.0f>%.0f" % [recipe.result_item_id, out, raw])
+		if out <= raw:
+			losers.append(recipe.result_item_id)
+	ck(losers.is_empty(), "every dish restores more than its ingredients did raw",
+		" · ".join(lines))
+
+	# Reachable: an ingredient nothing produces would make a dish decoration.
+	var unknown: Array = []
+	for recipe in dishes:
+		for ing in recipe.ingredients:
+			if ItemDB.get_item(ing.item_id) == null:
+				unknown.append(ing.item_id)
+	ck(unknown.is_empty(), "and every ingredient is a real item", str(unknown))
+
+	# --- it actually gates on the station ---
+	var stew: RecipeData = null
+	for recipe in dishes:
+		if recipe.id == "forest_stew":
+			stew = recipe
+	ck(stew != null, "the stew is on the menu")
+	if stew != null:
+		Inventory.clear()
+		for ing in stew.ingredients:
+			Inventory.add_item(ing.item_id, ing.count)
+		ck(not Crafting.can_craft(stew), "with the ingredients but no pot, it cannot be made")
+		Crafting.add_station("cookpot")
+		ck(Crafting.can_craft(stew), "stand at a pot and it can")
+		ck(Crafting.craft(stew), "and it cooks")
+		ck(Inventory.count("forest_stew") == 1, "producing exactly one bowl")
+		var leftovers := 0
+		for ing in stew.ingredients:
+			leftovers += Inventory.count(ing.item_id)
+		ck(leftovers == 0, "having eaten every ingredient", "%d left" % leftovers)
+		# Transactional, same as every other recipe — nothing half-consumed.
+		ck(not Crafting.can_craft(stew), "and cannot be made again from nothing")
+		Crafting.remove_station("cookpot")
+
+	# --- eating one works through the ordinary any-slot path ---
+	GameState.set_hunger(10.0)
+	GameState.set_thirst(10.0)
+	var before_h := GameState.hunger
+	var before_t := GameState.thirst
+	ck(Inventory.use_slot(0), "a dish is eaten like any other food")
+	ck(GameState.hunger > before_h and GameState.thirst > before_t,
+		"restoring several stats at once, which is the point of a dish",
+		"hunger %.0f->%.0f, thirst %.0f->%.0f"
+			% [before_h, GameState.hunger, before_t, GameState.thirst])
+
+	# --- the menu puts the answer where you can see it ---
+	# ⚠️ Found by RENDERING, not by reading. Walking to a pot and opening the
+	# craft tab showed Bone Tool, Campfire Kit, Fence and Plank — the four
+	# dishes the pot exists for were below the fold behind nineteen
+	# alphabetical rows. Nothing is hidden (a visible locked branch is how the
+	# player learns the tree exists); craftable rows just float to the top.
+	Inventory.clear()
+	for pair in [["venison", 2], ["fruit", 4], ["fibre", 6], ["berries", 4]]:
+		Inventory.add_item(pair[0], pair[1])
+	Crafting.add_station("cookpot")
+	var journal := get_node("Main/Journal")
+	journal._show_tab("crafting")
+	journal.set_open(true)
+	journal._refresh()
+	var order: Array = []
+	var rows: Array = journal._craft_rows
+	var parent: Node = rows[0]["row"].get_parent()
+	for child in parent.get_children():
+		for entry in rows:
+			if entry["row"] == child:
+				order.append(entry["recipe"])
+	var first_blocked := order.size()
+	var last_ready := -1
+	for i in order.size():
+		if Crafting.can_craft(order[i]):
+			last_ready = i
+		elif first_blocked == order.size():
+			first_blocked = i
+	ck(last_ready < first_blocked,
+		"what you can make right now sorts above what you cannot",
+		"last ready at %d, first blocked at %d" % [last_ready, first_blocked])
+	var top: Array = []
+	for i in mini(4, order.size()):
+		top.append(order[i].result_item_id)
+	ck(not top.has("bone_tool"),
+		"so a pot's dishes are not buried behind nineteen alphabetical rows", str(top))
+	journal.set_open(false)
+	Crafting.remove_station("cookpot")
+
+	# ⚠️ Rule 3: the whole phase must be data. If crafting.gd had to learn what
+	# a stew is, the resource web would not be expandable by adding files.
+	var source := FileAccess.get_file_as_string("res://scripts/globals/crafting.gd")
+	var leaked: Array = []
+	for word in ["cookpot", "stew", "pottage", "broth", "pie", "cook_pot"]:
+		if source.contains(word):
+			leaked.append(word)
+	ck(leaked.is_empty(), "and crafting.gd never learns any of it exists", str(leaked))
+
+	Inventory.clear()
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
+
+
+## Total restorative value of one of an item — the three stats a consumable can
+## actually move today. Used to prove that cooking pays.
+func _food_value(id: String) -> float:
+	var item := ItemDB.get_item(id)
+	if item == null:
+		return 0.0
+	return item.stat("hunger", 0.0) + item.stat("thirst", 0.0) + item.stat("warmth", 0.0)
 
 
 ## Free, buildable cells spiralling out from `centre`, nearest first.

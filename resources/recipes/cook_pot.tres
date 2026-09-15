@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/recipe_data.gd" id="script_recipe"]
+[ext_resource type="Script" path="res://scripts/world/recipe_ingredient.gd" id="script_ingredient"]
+
+[sub_resource type="Resource" id="ing_stone"]
+script = ExtResource("script_ingredient")
+item_id = "stone"
+count = 4
+
+[sub_resource type="Resource" id="ing_plank"]
+script = ExtResource("script_ingredient")
+item_id = "plank"
+count = 2
+
+[resource]
+script = ExtResource("script_recipe")
+id = "cook_pot"
+result_item_id = "cook_pot"
+result_count = 1
+ingredients = Array[RecipeIngredient]([SubResource("ing_stone"), SubResource("ing_plank")])
+required_station = "workbench"
+unlocked_by_default = true
+category = "tool"

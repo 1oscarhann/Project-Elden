@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/item_data.gd" id="script_item"]
+[ext_resource type="Texture2D" uid="uid://cjjw1fg4dug6b" path="res://assets/icons/items_food.png" id="sheet"]
+[ext_resource type="PackedScene" path="res://scenes/world/CookPot.tscn" id="placed"]
+
+[sub_resource type="AtlasTexture" id="icon"]
+atlas = ExtResource("sheet")
+region = Rect2(160, 256, 32, 32)
+
+[resource]
+script = ExtResource("script_item")
+id = "cook_pot"
+display_name = "Cook Pot"
+icon = SubResource("icon")
+max_stack = 5
+category = 3
+description = "Place it to combine ingredients into real dishes."
+placed_scene = ExtResource("placed")
+placed_footprint = Vector2i(1, 1)
+stats = {}

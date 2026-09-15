@@ -106,10 +106,68 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE + Phase 11, Phase 12, the Journal hub and the opening — 309 regression
+**PROJECT v1 COMPLETE + Phases 11-13, the Journal hub and the opening — 335 regression
 checks green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
+
+### Phase 13 notes — Cooking depth (v2 item C)
+
+**⚠️ THE "MINIMUM" BULLET OF ITEM C WAS ALREADY BUILT.** It asks for
+*"raw_meat + campfire -> cooked_meat, cooked restores more warmth/energy than raw"* — which
+shipped in **Phase 7**, was extended in **Phase 9** (venison, poultry) and is already asserted in
+**Phase 11** (*"cooking at least doubles it"*). So this phase is the **Depth** bullet:
+*"multi-ingredient recipes -> dishes with different restore profiles. A cooking station/pot as a
+crafting station."*
+
+- **The cook pot is the fourth user of counted station registration** (heat sources → crafting
+  stations → interiors → weather shelter). `CookPot.tscn` is `Workbench.tscn` with a different
+  `station_id`; unlike the campfire it leaves `active` at true, because a pot needs no lighting.
+  Crafted at the **workbench** (stone x4 + plank x2), so it sits one branch deeper than the fire.
+- **⚠️ THERE IS NO POT OR CAULDRON IN ANY ART PACK.** Checked both Sprout Lands sheets: furniture
+  is beds, dressers, chairs, clocks and rugs; objects is trees, bushes, rocks and flowers.
+  Precedent is borrow-and-flag (the workbench is a dresser, the hut a chicken coop) — but
+  `items_food.png` carries a real cauldron at cell **(5,8)**, so **`tools/build_cookpot_sprite.gd`**
+  cuts it out, trims to its own alpha bounds, Lanczos-downscales to 16px and bottom-aligns it in
+  the cell. Trimming BEFORE scaling matters: scaling the icon's padding down with it leaves the
+  pot visibly smaller than every other object on the grid.
+- **Four dishes, and the spec's actual requirement is "DIFFERENT restore profiles"** — asserted as
+  *each of hunger, thirst and warmth is some dish's speciality*, and *no two dishes share a
+  profile*:
+
+  | dish | ingredients | hunger / thirst / warmth | icon |
+  |------|-------------|--------------------------|------|
+  | `fruit_broth` | fruit x2 + berries x2 | **20 / 48 / 8** | food (3,8) |
+  | `herb_pottage` | fibre x3 + berries x2 | **22 / 12 / 34** | food (9,9) |
+  | `forest_stew` | venison + fruit + fibre x2 | **58 / 14 / 20** | food (6,8) |
+  | `game_pie` | roast_venison + roast_poultry + fibre x3 | **95 / 0 / 35** | food (4,9) |
+
+- **⚠️ COMBINING MUST PAY, and it is measured per dish rather than asserted in the abstract.** A
+  dish that restored less than its own ingredients would be a trap that costs the player food to
+  use. Measured totals: **forest_stew 92>34 · fruit_broth 76>62 · game_pie 130>98 ·
+  herb_pottage 68>22.** The pie was 73>98 on the first pass (a loss) and was rebalanced, not
+  shipped.
+- **Nothing in `crafting.gd` learns any of this exists** — asserted by grepping its source for
+  `cookpot`, `stew`, `pottage`, `broth`, `pie`. The whole phase is `.tres` files plus one scene.
+- **No waterskin.** ROADMAP_V2 item 0 mentions one as *"later if wanted"*; it belongs to that item
+  and would have been scope creep here. `fruit_broth` is the portable thirst answer instead.
+
+#### ⚠️ The craft menu buried the thing you walked to the pot for
+
+Found by **rendering, not by reading**. Standing at a cook pot with every ingredient, the Craft
+tab showed **Bone Tool, Campfire Kit, Fence and Plank** — the four dishes were below the fold
+behind nineteen alphabetical rows. The menu was working exactly as specified and was useless.
+
+- **`journal._sort_craft_rows()`**: rank 0 = craftable right now, 1 = needs a station you ARE
+  stood at but you are short of materials, 2 = everything else; alphabetical inside a band so the
+  list does not reshuffle every refresh as counts tick past a threshold.
+- **Nothing is hidden or removed** — a visible locked branch is still how the player learns the
+  tree exists (Phase 7). Only the order changed.
+- Asserted both ways: *what you can make sorts above what you cannot*, and *the top four are not
+  `bone_tool`*.
+- **⚠️ A `str.replace()` that matches nothing is SILENT.** The first attempt at this fix used the
+  wrong indentation for the call site, patched nothing, printed "ok", and the re-render looked
+  identical — which is the only reason it was caught. Assert the anchor exists before replacing.
 
 ### Phase 12 notes — Weather (v2 item B)
 
@@ -1084,7 +1142,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-309 checks across every phase built so far; exits non-zero on failure. It exists because a
+335 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**
