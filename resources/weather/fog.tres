@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeatherData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/weather_data.gd" id="script_weather"]
+
+[resource]
+script = ExtResource("script_weather")
+id = "fog"
+display_name = "Fog"
+weight = 1.5
+min_seconds = 70.0
+max_seconds = 150.0
+sky_tint = Color(0.88, 0.9, 0.93, 1)
+particle_amount = 0
+haze = 0.34
+haze_colour = Color(0.84, 0.87, 0.89, 1)
+warmth_drain_multiplier = 1.12
+thirst_drain_multiplier = 1.0
+fire_burn_multiplier = 1.0
+light_chance = 1.0
+ambience = ""

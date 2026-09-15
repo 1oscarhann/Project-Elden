@@ -40,9 +40,13 @@ func _initialize() -> void:
 	_write("sfx_place", _place(), false, 0.75)
 	_write("sfx_ui", _ui_click(), false, 0.30)
 	_write("sfx_eat", _eat(), false, 0.55)
+	_write("sfx_fizzle", _fizzle(), false, 0.50)   # a wet log refusing to catch
 	_write("sfx_fire", _fire(), true, 0.45)       # a bed, not an event
 	_write("amb_day", _ambience_day(), true, 0.50)
 	_write("amb_night", _ambience_night(), true, 0.42)
+	# Sits ABOVE the day/night bed it replaces (0.50/0.42) because rain is the
+	# loudest thing in a real downpour — but not by much, or it stops being cozy.
+	_write("amb_rain", _ambience_rain(), true, 0.52)
 	_write("music_theme", _music(), true, 0.55)
 
 	if _failures > 0:
@@ -312,6 +316,43 @@ func _ambience_night() -> PackedFloat32Array:
 			_add_tone(buf, at + chirp * 0.035, 0.028, hz, 0.055, 4.0)
 		at += _rng.randf_range(0.42, 0.72)
 	return _seamless(buf, 1.0)
+
+
+## Rain: broadband noise shaped into a hiss, with slow swells so a long loop
+## does not read as a flat wall of static. Loops.
+func _ambience_rain() -> PackedFloat32Array:
+	var seconds := 12.0
+	# Two bands rather than one: the low one is the body of the downpour, the
+	# high one is the patter on leaves. A single lowpass sounds like wind.
+	var body := _lowpass(_noise(seconds), 1800.0)
+	var patter := _highpass(_lowpass(_noise(seconds), 6500.0), 2600.0)
+	var buf := _buffer(seconds)
+	for i in buf.size():
+		var t := float(i) / RATE
+		# Slow gusts at two incommensurate rates, so the swell never lines up
+		# with itself inside the loop.
+		var gust: float = 0.72 + 0.20 * sin(TAU_F * 0.08 * t) \
+			+ 0.12 * sin(TAU_F * 0.053 * t + 2.1)
+		buf[i] = (body[i] * 1.5 + patter[i] * 0.9) * gust
+	# A handful of heavier drips, so it is rain landing on things rather than
+	# a tap running.
+	for drip in 9:
+		var at := _rng.randf_range(0.3, seconds - 0.6)
+		_add_tone(buf, at, 0.05, _rng.randf_range(600.0, 1500.0), 0.05, 5.0, 900.0)
+	return _seamless(buf, 1.0)
+
+
+## A wet log hitting cold coals: a short hiss with no tone in it at all.
+func _fizzle() -> PackedFloat32Array:
+	var seconds := 0.45
+	var buf := _highpass(_lowpass(_noise(seconds), 5200.0), 900.0)
+	for i in buf.size():
+		var t := float(i) / RATE
+		# Swells in over the first 60ms then dies away, which is what steam
+		# off a hot stone actually sounds like — not a click.
+		var env: float = minf(t / 0.06, 1.0) * _decay(maxf(t - 0.06, 0.0), seconds, 2.4)
+		buf[i] *= env * 1.4
+	return _deglitch(buf)
 
 
 ## The theme: a slow pentatonic melody over a drone. Pentatonic because every

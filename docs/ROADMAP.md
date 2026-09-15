@@ -19,13 +19,14 @@ phase until the previous one runs and I've confirmed it. Tick boxes as we go.
 | 11 | Hunger & thirst (first v2 item) | `phase11_hunger_thirst.md` | ☑ |
 | — | Journal hub (one panel, any-slot item use, drag-and-drop) | owner request | ☑ |
 | — | Opening cutscene (letterbox, typewriter, placeholder camera shot) | owner request | ☑ |
+| 12 | Weather — clear / rain / fog (v2 item B) | `ROADMAP_V2.md` §B | ☑ |
 
 ⚠️ Phase 11's own spec says to build it *before* Phase 10. It was written before Phase 10 shipped,
 and `ROADMAP_V2.md` supersedes it by listing hunger/thirst as **v2 item 0, after 0–10** — so it is
 listed here in the order it was actually built. The rest of v2 is planned in `ROADMAP_V2.md`.
 
 **PROJECT v1 COMPLETE.** All ten phases are built, runnable and covered by the regression suite
-(270 checks), plus Phase 11 and two owner-requested pieces: the Journal hub and the opening. What remains is not new systems: ship a desktop export, test the web export, write
+(309 checks), plus Phases 11-12 and two owner-requested pieces: the Journal hub and the opening. What remains is not new systems: ship a desktop export, test the web export, write
 the itch.io page, and then content — more recipes, more islands, seasons — all of which is data
 files, not code.
 

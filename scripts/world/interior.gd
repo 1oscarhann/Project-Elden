@@ -99,14 +99,21 @@ func on_entered() -> void:
 	if is_sheltered and not _warming:
 		_warming = true
 		GameState.add_heat_source()
+		# Phase 12: a roof also keeps the rain off. Same counted-registration
+		# shape as the heat source above, so the weather system never has to
+		# learn what a building is — it only counts how many roofs you are under.
+		Weather.add_shelter()
 
 
 func on_exited() -> void:
 	if _warming:
 		_warming = false
 		GameState.remove_heat_source()
+		Weather.remove_shelter()
 
 
-## Hand the heat source back if this interior is freed while occupied.
+## Hand the heat source AND the shelter back if this interior is freed while
+## occupied. Both are counted, so a leak here would strand the player warm and
+## dry forever.
 func _exit_tree() -> void:
 	on_exited()

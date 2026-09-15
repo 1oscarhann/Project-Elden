@@ -20,6 +20,10 @@ GameState="*res://scripts/globals/game_state.gd"
 ItemDB="*res://scripts/globals/item_db.gd"
 Inventory="*res://scripts/globals/inventory.gd"
 Crafting="*res://scripts/globals/crafting.gd"
+; Phase 12. Before SaveManager (which saves it) and before Audio (which
+; connects to weather_changed for the rain bed). GameState and Campfire read it
+; per frame rather than at _ready, so it does not need to precede those.
+Weather="*res://scripts/globals/weather.gd"
 ; Phase 10. SaveManager needs every store above it to already exist; Settings
 ; writes DayNight.day_length_seconds; Audio connects to DayNight and Inventory.
 SaveManager="*res://scripts/globals/save_manager.gd"

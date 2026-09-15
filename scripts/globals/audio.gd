@@ -27,6 +27,7 @@ const SFX := {
 	"place": "sfx_place",
 	"ui": "sfx_ui",
 	"eat": "sfx_eat",
+	"fizzle": "sfx_fizzle",
 }
 
 var _voices: Array[AudioStreamPlayer] = []
@@ -58,13 +59,17 @@ func _ready() -> void:
 	# Same reasoning for crafting: it is a global event, so the flourish is
 	# wired once here rather than in the craft menu AND in every API caller.
 	Crafting.crafted.connect(_on_crafted)
+	# Phase 12. Rain replaces the day/night bed while it lasts, so the ambience
+	# is decided in one place by both signals rather than each fighting the other.
+	Weather.weather_changed.connect(_on_weather_changed)
+	Weather.shelter_changed.connect(_on_shelter_changed)
 
 
 ## Starts the theme and the ambience. Called by the game scene, not by _ready,
 ## so the main menu can choose to sit in silence.
 func start_world_audio() -> void:
 	play_music("music_theme")
-	_on_phase_changed(DayNight.phase)
+	_refresh_ambience()
 
 
 func stop_world_audio() -> void:
@@ -148,10 +153,30 @@ func _stream(stem: String) -> AudioStream:
 	return stream
 
 
-func _on_phase_changed(phase: DayNight.Phase) -> void:
+func _on_phase_changed(_phase: DayNight.Phase) -> void:
+	_refresh_ambience()
+
+
+func _on_weather_changed(_data: WeatherData) -> void:
+	_refresh_ambience()
+
+
+func _on_shelter_changed(_sheltered: bool) -> void:
+	_refresh_ambience()
+
+
+## ⚠️ ONE place decides the ambience bed, because the clock and the weather
+## both want to set it and whichever fired last would otherwise win. Weather
+## overrides the time of day when it has a bed of its own; indoors it does not,
+## because you cannot hear the downpour the same way through a roof.
+func _refresh_ambience() -> void:
+	var weather: WeatherData = Weather.current
+	if weather != null and not weather.ambience.is_empty() and not Weather.is_sheltered():
+		play_ambience(weather.ambience)
+		return
 	# Dusk already counts as night: the crickets should be in before it is dark,
 	# which is also when warmth starts draining.
-	var night := phase == DayNight.Phase.NIGHT or phase == DayNight.Phase.DUSK
+	var night := DayNight.phase == DayNight.Phase.NIGHT or DayNight.phase == DayNight.Phase.DUSK
 	play_ambience("amb_night" if night else "amb_day")
 
 

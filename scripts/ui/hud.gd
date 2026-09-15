@@ -12,6 +12,7 @@ extends CanvasLayer
 const LOW_TINT := Color(1.0, 0.72, 0.55)
 
 @onready var _clock: Label = $Frame/Readout/Clock
+@onready var _weather: Label = $Frame/Readout/Weather
 @onready var _warmth_label: Label = $Frame/Readout/WarmthLabel
 @onready var _warmth_bar: ProgressBar = $Frame/Readout/Warmth
 @onready var _hunger_label: Label = $Frame/Readout/HungerLabel
@@ -34,6 +35,9 @@ func _ready() -> void:
 	DayNight.day_passed.connect(_on_day_passed)
 	GameState.hunger_changed.connect(_on_hunger_changed)
 	GameState.thirst_changed.connect(_on_thirst_changed)
+	Weather.weather_changed.connect(_on_weather_changed)
+	Weather.shelter_changed.connect(func(_s): _refresh_weather())
+	_refresh_weather()
 	_on_ticked(DayNight.time_of_day)
 	_on_warmth_changed(GameState.warmth)
 	_on_hunger_changed(GameState.hunger)
@@ -42,6 +46,24 @@ func _ready() -> void:
 
 func _on_ticked(_time_of_day: float) -> void:
 	_clock.text = "Day %d   %s   %s" % [DayNight.day, DayNight.clock_text(), DayNight.phase_name()]
+
+
+func _on_weather_changed(_data: WeatherData) -> void:
+	_refresh_weather()
+
+
+## Says what it is AND what it is doing to you, because a player who cannot see
+## why they are getting cold faster will read it as a bug rather than as rain.
+func _refresh_weather() -> void:
+	if Weather.current == null:
+		_weather.text = ""
+		return
+	var text := Weather.display_name()
+	if Weather.is_sheltered():
+		text += "  (sheltered)"
+	elif Weather.warmth_multiplier() > 1.0:
+		text += "  (colder)"
+	_weather.text = text
 
 
 func _on_warmth_changed(warmth: float) -> void:

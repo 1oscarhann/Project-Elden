@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeatherData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/weather_data.gd" id="script_weather"]
+
+[resource]
+script = ExtResource("script_weather")
+id = "rain"
+display_name = "Rain"
+weight = 2.0
+min_seconds = 80.0
+max_seconds = 170.0
+sky_tint = Color(0.72, 0.78, 0.9, 1)
+particle_amount = 260
+particle_velocity = Vector2(-55, 430)
+particle_colour = Color(0.85, 0.92, 1, 0.8)
+particle_size = Vector2(1, 11)
+particle_lifetime = 0.55
+haze = 0.1
+haze_colour = Color(0.72, 0.78, 0.88, 1)
+warmth_drain_multiplier = 1.35
+thirst_drain_multiplier = 0.55
+fire_burn_multiplier = 2.2
+light_chance = 0.45
+ambience = "amb_rain"

@@ -80,7 +80,9 @@ func _process(delta: float) -> void:
 	if rate != 0.0:
 		set_warmth(warmth + rate * delta)
 	set_hunger(hunger - hunger_drain * delta)
-	set_thirst(thirst - thirst_drain * delta)
+	# Weather touches thirst but not hunger: a wet day keeps you damp and less
+	# parched, it does not feed you.
+	set_thirst(thirst - thirst_drain * Weather.thirst_multiplier() * delta)
 
 
 ## Current warmth change per second. Being near heat always wins over the clock.
@@ -91,7 +93,10 @@ func _process(delta: float) -> void:
 func warmth_rate() -> float:
 	if is_warmed():
 		return heat_regen
-	var bite := deprivation_multiplier()
+	# ⚠️ BOTH multipliers apply to the DRAIN branches only, never to day_regen.
+	# Weather can make a night bite harder; it can never stand in for a fire,
+	# and a sunny day must never heat you faster than a clear one.
+	var bite := deprivation_multiplier() * Weather.warmth_multiplier()
 	match _phase:
 		DayNight.Phase.NIGHT:
 			return -night_drain * bite
@@ -102,7 +107,9 @@ func warmth_rate() -> float:
 
 
 ## 1.0 when fed and watered, rising to empty_warmth_multiplier when both are
-## empty. Each stat contributes half.
+## empty. Each stat contributes half. Weather is a SEPARATE multiplier applied
+## alongside this one in warmth_rate(), not folded in here — they are different
+## reasons to be cold and the HUD may want to say which.
 func deprivation_multiplier() -> float:
 	var extra := empty_warmth_multiplier - 1.0
 	return 1.0 + extra * 0.5 * (_lack(hunger) + _lack(thirst))

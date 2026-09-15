@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/weather_view.gd" id="script_weather_view"]
+
+[node name="WeatherView" type="Node2D"]
+script = ExtResource("script_weather_view")
+
+; Sized well past the 320x180 the camera sees at zoom 2, so it still covers the
+; view at the intro's 1.55 (413x232) with room to spare. Centred on the camera.
+[node name="Haze" type="ColorRect" parent="."]
+z_index = 35
+offset_left = -340.0
+offset_top = -240.0
+offset_right = 340.0
+offset_bottom = 240.0
+color = Color(0.84, 0.87, 0.89, 0)
+mouse_filter = 2
+
+; Above the fireflies (40) and the leaves (30): rain falls in front of everything.
+[node name="Fall" type="CPUParticles2D" parent="."]
+z_index = 45
+emitting = false
+amount = 260
+lifetime = 0.55
+preprocess = 1.0
+lifetime_randomness = 0.25
+emission_shape = 3
+emission_rect_extents = Vector2(210, 130)
+direction = Vector2(-0.13, 1)
+spread = 3.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 390.0
+initial_velocity_max = 470.0
+scale_amount_min = 0.9
+scale_amount_max = 1.1
+color = Color(0.74, 0.84, 0.96, 0.5)

@@ -95,7 +95,9 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	if fuel > 0.0:
-		set_fuel(fuel - burn_rate * delta)
+		# Rain eats a fire. Shelter cancels it, which is the whole reason to
+		# put one inside a hut — Weather resolves that, not this file.
+		set_fuel(fuel - burn_rate * Weather.fire_burn_multiplier() * delta)
 	_update_visuals()
 	if _player_in_reach:
 		_update_prompt()
@@ -121,6 +123,14 @@ func add_wood() -> bool:
 	if fuel >= max_fuel or not Inventory.remove_item(fuel_item, 1):
 		return false
 	var was_lit := is_lit()
+	# ⚠️ "Harder to light", not impossible, and only when RELIGHTING a dead
+	# fire — an already-burning one shrugs off the rain. The log is handed
+	# straight back on a failure, so a wet night can cost you time but never
+	# your woodpile, and never a game over in a game that has none.
+	if not was_lit and not Weather.log_catches():
+		Inventory.add_item(fuel_item, 1)
+		_fizzle()
+		return false
 	set_fuel(fuel + fuel_per_log())
 	_flare_up()
 	if not was_lit:
@@ -227,12 +237,24 @@ func _flare_up() -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
+## A failed light: a puff of steam and a hiss, so the player can see the rain
+## beat them rather than wondering why E did nothing.
+func _fizzle() -> void:
+	_smoke.restart()
+	_smoke.emitting = true
+	Audio.play("fizzle")
+	if _player_in_reach:
+		_prompt.text = "the rain puts it out..."
+
+
 func _update_prompt() -> void:
 	var wood: int = Inventory.count(fuel_item)
 	if fuel >= max_fuel:
 		_prompt.text = "Fire is roaring  (%d%%)" % roundi(fuel_ratio() * 100.0)
 	elif wood > 0:
-		_prompt.text = "[E] add wood  x%d   ·   fire %d%%" % [wood, roundi(fuel_ratio() * 100.0)]
+		var wet := "  (wet — may not catch)" if not is_lit() and Weather.is_wet() else ""
+		_prompt.text = "[E] add wood  x%d   ·   fire %d%%%s" \
+			% [wood, roundi(fuel_ratio() * 100.0), wet]
 	else:
 		_prompt.text = "no wood   ·   fire %d%%" % roundi(fuel_ratio() * 100.0)
 

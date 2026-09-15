@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeatherData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/weather_data.gd" id="script_weather"]
+
+[resource]
+script = ExtResource("script_weather")
+id = "clear"
+display_name = "Clear"
+weight = 5.0
+min_seconds = 150.0
+max_seconds = 320.0
+sky_tint = Color(1, 1, 1, 1)
+particle_amount = 0
+haze = 0.0
+warmth_drain_multiplier = 1.0
+thirst_drain_multiplier = 1.0
+fire_burn_multiplier = 1.0
+light_chance = 1.0
+ambience = ""

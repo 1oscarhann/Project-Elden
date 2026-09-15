@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 270
+const EXPECTED_CHECKS := 309
 
 var f := 0
 var fails := 0
@@ -81,6 +81,7 @@ func _process(delta: float) -> void:
 	_phase11()
 	_journal()
 	_intro()
+	_phase12()
 	print("\n-- Phase 9b: wildlife over time --")
 
 
@@ -1064,6 +1065,194 @@ func _intro() -> void:
 	ck(camera.global_position == held, "and stops following the player while it does")
 	camera.cinematic = false
 	camera.snap_to_target()
+
+
+## Phase 12 — weather.
+##
+## ⚠️ Spec deviations, flagged not improvised:
+##   · SNOW IS OUT. ROADMAP_V2 item B lists "rain, clear, fog, snow" but then
+##     hedges in the same bullet — "consider dropping snow specifically, keep
+##     rain/clear/fog". Seasons are cut and this is a palm-tree island, so the
+##     spec's own suggestion is taken.
+##   · The roadmap's line about weather touching hunger/thirst is TRUNCATED
+##     mid-sentence ("(e.g. rain" and nothing more). Rain slowing thirst is the
+##     obvious completion and is what is built, as a reading not a quotation.
+func _phase12() -> void:
+	print("\n-- Phase 12: weather --")
+	var all := Weather.all_weather()
+	ck(all.size() >= 3, "every weather in resources/weather/ is loaded", "%d" % all.size())
+	var ids: Array = []
+	for data in all:
+		ids.append(data.id)
+	ids.sort()
+	ck(ids == ["clear", "fog", "rain"], "clear, rain and fog — and no snow", str(ids))
+	var blanks: Array = []
+	for data in all:
+		if data.id.is_empty() or data.display_name.is_empty():
+			blanks.append(data.resource_path.get_file())
+	ck(blanks.is_empty(), "each one carries an id and a name", str(blanks))
+	# Adding weather must stay a pure data change.
+	ck(Weather.get_weather("rain") != null and Weather.get_weather("snow") == null,
+		"weather is looked up by id, so a new one is a .tres and no code")
+
+	# --- the state machine ---
+	var clear := Weather.get_weather("clear")
+	var rain := Weather.get_weather("rain")
+	var heaviest: WeatherData = all[0]
+	for data in all:
+		if data.weight > heaviest.weight:
+			heaviest = data
+	ck(heaviest.id == "clear", "clear is the most likely — cozy, not a monsoon",
+		"weights %s" % str(ids.map(func(i): return "%s %.1f" % [i, Weather.get_weather(i).weight])))
+	Weather.set_weather("clear", true)
+	var repeats := 0
+	var seen := {}
+	for i in 400:
+		var picked: WeatherData = Weather._pick()
+		if picked == Weather.current:
+			repeats += 1
+		seen[picked.id] = int(seen.get(picked.id, 0)) + 1
+		Weather._apply(picked, true)
+	ck(repeats == 0, "it never picks the weather already running", "%d repeats in 400" % repeats)
+	ck(seen.size() == all.size(), "and every kind comes up over 400 picks", str(seen))
+	# Occupancy, not pick count: clear is weighted to dominate the timeline.
+	ck(int(seen.get("clear", 0)) > int(seen.get("fog", 0)),
+		"with clear the most common of them", str(seen))
+
+	# --- it feeds the warmth system, by signal, without either knowing the other ---
+	Weather.set_weather("clear", true)
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
+	DayNight.phase = DayNight.Phase.NIGHT
+	GameState._on_phase_changed(DayNight.Phase.NIGHT)
+	var dry_rate := GameState.warmth_rate()
+	Weather.set_weather("rain", true)
+	var wet_rate := GameState.warmth_rate()
+	ck(wet_rate < dry_rate, "rain makes a night bite harder",
+		"%.2f/s vs %.2f/s" % [wet_rate, dry_rate])
+	ck(rain.warmth_drain_multiplier < 2.0,
+		"but no weather doubles the drain — this stays a nuisance, not a threat",
+		"x%.2f" % rain.warmth_drain_multiplier)
+	# ⚠️ The multiplier must touch the DRAIN only. A sunny day must not heat you
+	# faster than a clear one, or weather starts substituting for a campfire.
+	DayNight.phase = DayNight.Phase.DAY
+	GameState._on_phase_changed(DayNight.Phase.DAY)
+	Weather.set_weather("clear", true)
+	var day_clear := GameState.warmth_rate()
+	Weather.set_weather("rain", true)
+	var day_rain := GameState.warmth_rate()
+	ck(is_equal_approx(day_clear, day_rain),
+		"and never touches the daytime RECOVERY, only the drain",
+		"%.2f vs %.2f" % [day_clear, day_rain])
+	ck(GameState.speed_factor() > 0.0, "weather never stops the player dead")
+
+	# --- thirst (the truncated roadmap line) ---
+	Weather.set_weather("clear", true)
+	var dry_thirst := Weather.thirst_multiplier()
+	Weather.set_weather("rain", true)
+	ck(Weather.thirst_multiplier() < dry_thirst,
+		"a wet day leaves you less thirsty",
+		"x%.2f vs x%.2f" % [Weather.thirst_multiplier(), dry_thirst])
+
+	# --- shelter, counted exactly like heat sources ---
+	Weather.set_weather("rain", true)
+	ck(not Weather.is_sheltered(), "you start out in the open")
+	ck(Weather.warmth_multiplier() > 1.0, "and the rain is getting to you")
+	Weather.add_shelter()
+	Weather.add_shelter()
+	ck(Weather.is_sheltered() and Weather.shelter_count() == 2, "shelters COUNT, not toggle")
+	Weather.remove_shelter()
+	ck(Weather.is_sheltered(), "so leaving one of two roofs leaves you under the other")
+	ck(is_equal_approx(Weather.warmth_multiplier(), 1.0),
+		"and a roof cancels the weather penalty entirely")
+	ck(is_equal_approx(Weather.fire_burn_multiplier(), 1.0), "and shelters the fire too")
+	Weather.remove_shelter()
+	ck(not Weather.is_sheltered(), "and stepping out puts you back in it")
+	Weather.remove_shelter()
+	ck(Weather.shelter_count() == 0, "an unmatched release cannot drive the count negative")
+
+	# --- the fire ---
+	Weather.set_weather("clear", true)
+	var dry_burn := Weather.fire_burn_multiplier()
+	Weather.set_weather("rain", true)
+	ck(Weather.fire_burn_multiplier() > dry_burn, "rain burns a fire down faster",
+		"x%.1f vs x%.1f" % [Weather.fire_burn_multiplier(), dry_burn])
+	# ⚠️ "Harder to light", NEVER impossible — and the log must come back on a
+	# failure, or a wet night could eat a whole woodpile for nothing.
+	ck(rain.light_chance > 0.0, "a wet log can always eventually catch",
+		"%.0f%% a go" % (rain.light_chance * 100.0))
+	var failed := 0
+	var lit := 0
+	var stolen := 0
+	for attempt in 60:
+		Inventory.clear()
+		Inventory.add_item("wood", 10)
+		fire.set_fuel(0.0)
+		var ok: bool = fire.add_wood()
+		var left: int = Inventory.count("wood")
+		if ok:
+			lit += 1
+			if left != 9:
+				stolen += 1
+		else:
+			failed += 1
+			if left != 10:
+				stolen += 1
+	ck(failed > 0 and lit > 0, "over 60 tries in the rain it sometimes catches and sometimes does not",
+		"%d lit, %d fizzled" % [lit, failed])
+	ck(stolen == 0, "and a failed light NEVER costs you the log", "%d lost" % stolen)
+	# An already-burning fire shrugs the rain off — only relighting is hard.
+	Inventory.clear()
+	Inventory.add_item("wood", 4)
+	fire.set_fuel(20.0)
+	ck(fire.add_wood(), "a fire already burning takes a log in any weather")
+	fire.set_fuel(40.0)
+
+	# --- the look ---
+	var camera := get_tree().get_nodes_in_group(PlayerCamera.GROUP)[0] as PlayerCamera
+	var view := camera.get_node_or_null("WeatherView")
+	ck(view != null, "the weather is drawn from under the camera, like the fireflies")
+	if view != null:
+		var fall: CPUParticles2D = view.get_node("Fall")
+		# GL Compatibility + web: CPU particles everywhere, per Phases 4/5/9/10.
+		ck(fall is CPUParticles2D, "with CPU particles, not GPU")
+		# ⚠️ The exact trap the fireflies fell into: a CPUParticles2D with no
+		# texture draws a 1px point that the night tint erases completely.
+		ck(fall.texture != null, "which carry a real texture rather than a 1px point")
+		ck(view.get_node("Haze") is ColorRect, "plus a haze rect for fog")
+	# Sky tint MULTIPLIES into the day/night gradient. White would be no change;
+	# an overcast colour that REPLACED it would cancel the day/night cycle.
+	ck(clear.sky_tint == Color.WHITE, "clear weather leaves the sky gradient alone")
+	ck(rain.sky_tint != Color.WHITE and rain.sky_tint.v > 0.5,
+		"rain darkens it without blacking it out", str(rain.sky_tint))
+
+	# --- sound ---
+	ck(FileAccess.file_exists("res://assets/audio/amb_rain.res"), "rain has an ambience bed")
+	ck(FileAccess.file_exists("res://assets/audio/sfx_fizzle.res"), "and a wet log has a hiss")
+	ck(Audio.SFX.has("fizzle"), "which is registered by key like every other sound")
+
+	# --- persistence ---
+	Weather.set_weather("fog", true)
+	Weather.time_left = 42.0
+	var snapshot := Weather.save_data()
+	Weather.set_weather("clear", true)
+	Weather.add_shelter()
+	Weather.load_data(snapshot)
+	ck(Weather.id() == "fog", "the weather survives a save and load", Weather.id())
+	ck(is_equal_approx(Weather.time_left, 42.0), "with its remaining time",
+		"%.0fs" % Weather.time_left)
+	# ⚠️ Shelter is a LIVE count of areas the player stands in, and loading
+	# restarts the scene — restoring it would strand a roof that no longer exists.
+	ck(not Weather.is_sheltered(), "but shelter does NOT, because loading rebuilds the rooms")
+	Weather.load_data({})
+	ck(Weather.id() == "clear",
+		"a save written before weather existed falls back to clear", Weather.id())
+
+	Weather.set_weather("clear", true)
+	Weather.paused = true
+	Inventory.clear()
+	GameState.set_hunger(GameState.MAX_HUNGER)
+	GameState.set_thirst(GameState.MAX_THIRST)
 
 
 ## Free, buildable cells spiralling out from `centre`, nearest first.

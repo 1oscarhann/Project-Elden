@@ -106,10 +106,87 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE + Phase 11, the Journal hub and the opening — 270 regression checks
-green.** What is left is
+**PROJECT v1 COMPLETE + Phase 11, Phase 12, the Journal hub and the opening — 309 regression
+checks green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
+
+### Phase 12 notes — Weather (v2 item B)
+
+There is **no `docs/phases/phase12_*.md`** — searched the whole repo and all 43 commits, nothing
+matches intro/phase12 anywhere. The spec is **`ROADMAP_V2.md` section B**, and the phase was
+picked by the owner's rule "the next v2 item in alphabetical order": **A (Seasons) is CUT, so B.**
+
+- **⚠️ SNOW IS OUT, on the spec's own advice.** Item B lists "rain, clear, fog, snow" and then
+  hedges in the same bullet — *"consider dropping snow specifically, keep rain/clear/fog"*.
+  Seasons are cut and this is a palm-tree island. **Three weathers: clear, rain, fog.**
+- **⚠️ ROADMAP_V2 line 16 is TRUNCATED MID-SENTENCE**: *"weather will want to interact with
+  these stats (e.g. rain"* — and stops. Rain slowing thirst drain (x0.55) is the obvious
+  completion and is what is built, flagged as a reading rather than as the doc's words.
+- **`Weather` is the ninth autoload**, between `Crafting` and `SaveManager` — before SaveManager
+  (which saves it) and before Audio (which connects to `weather_changed`). GameState and Campfire
+  read it per frame rather than at `_ready`, so it does not need to precede those.
+- **Adding weather is a `.tres` and no code.** `WeatherData` carries its own weight, duration,
+  sky tint, particle params, and one multiplier per system. Nothing in the game ever learns what
+  "rain" is — `warmth_rate()` multiplies by a number it got from a signal.
+- **⚠️ Multipliers touch the DRAIN only, never the recovery** — the same rule the hunger/thirst
+  deprivation multiplier follows, for the same reason: weather must never substitute for a fire.
+  Asserted: daytime warmth recovery is identical in rain and clear (8.00 vs 8.00).
+- **Shelter is counted registration**, the fourth use of that shape (heat sources, crafting
+  stations, interiors, now weather). `Interior.on_entered()` calls `Weather.add_shelter()` right
+  beside its existing `GameState.add_heat_source()`. A roof cancels the warmth penalty, the fire
+  penalty and the particles. **Asserted it cannot go negative.**
+- **⚠️ Shelter is deliberately NOT saved.** It is a live count of areas the player stands in, and
+  loading restarts the scene — restoring the number would strand a roof that no longer exists.
+- **Rain makes a fire "harder to light", never impossible, and REFUNDS THE LOG.** `light_chance`
+  0.45 applies only when relighting a DEAD fire; an already-burning one shrugs it off. Measured
+  over 60 tries: 33 lit, 27 fizzled, **0 logs lost**. A wet night costs you time, never your
+  woodpile — there is no death in this game and a fire you cannot light must not become one.
+- **Audio: `amb_rain` + `sfx_fizzle`, synthesised** like everything else (`tools/build_audio.gd`),
+  so still no attribution. Rain is two noise bands — a low body and a high patter — because a
+  single lowpass sounds like wind. **⚠️ ONE method decides the ambience bed** (`_refresh_ambience`):
+  the clock and the weather both want to set it, and whichever fired last would otherwise win.
+- **The sky tint MULTIPLIES into the day/night gradient** rather than replacing it, or overcast
+  would cancel the day/night cycle. Measured on the rendered frame (world pixels only, HUD
+  excluded): clear `0.708/0.786/0.414` → rain `0.516/0.616/0.417` — red down 27%, green down 22%,
+  **blue holds**, which is exactly a cool darkening. Fog lifts blue 30%.
+
+#### ⚠️ Measuring an overlay: two traps, both hit, both worth not repeating
+
+`tools/weather_shots.gd` renders each weather and measures what it actually draws.
+
+1. **Frames seconds apart diff on AMBIENT MOTION, not on the effect.** The first version compared
+   each weather against an earlier clear frame and reported **81% of the screen changed for all
+   three — including rain under a roof, which draws nothing at all.** That is the water shimmer
+   (54.6% of sea pixels move every frame on shader TIME), plus wandering animals and the fire.
+   The fireflies measurement got this right by construction: **same frame, effect hidden vs shown.**
+2. **⚠️ `get_viewport().get_texture().get_image()` inside `_process` returns the PREVIOUS frame.**
+   Hiding the node and capturing in the same call grabs a picture that still has it in. With that
+   bug, **fog — a full-screen haze — measured as 0.42% of the screen**, which is what made it
+   obvious something was wrong. Each capture now sits a full frame after the visibility change.
+- **Correct numbers, comparable to the fireflies (1.03%) and smoke (0.41%):**
+  **rain 33.6% of the screen, peak delta 422/765 · fog 81.0%, peak 325 · rain under a roof 0.03%,
+  peak 53.** That last one is the noise floor, and it is the proof the measurement isolates the
+  effect rather than the scenery.
+- **Rain was genuinely too faint on the first render** and eyeballing said so correctly: alpha
+  0.5 pale blue against bright grass read as scratches. Now `Color(0.85,0.92,1,0.8)` and an 11px
+  streak. **But eyeballing ALSO said the sky tint was not working, and it was** — the numbers
+  above. Measure before acting on a visual suspicion.
+
+#### ⚠️ A NEW `class_name` is invisible to autoloads until the class cache is rebuilt
+
+Second time this has bitten the project (the first was `Intro.HUD_GROUP`). `weather.gd` is an
+autoload and is parsed **before** `global_script_class_cache.cfg` knows about `WeatherData`, so
+every `WeatherData` annotation in it failed with *"Could not find type"* and the autoload came out
+`Nil` — surfacing as `Nonexistent function 'warmth_multiplier' in base 'Nil'` from GameState.
+
+**The fix is a rescan, not a code workaround:**
+
+    godot --headless --path . --import      # regenerates the global class cache
+
+Do this immediately after adding any `class_name` that an autoload refers to. (Where the type is
+only needed for a group name or a constant, the earlier workaround — a plain string literal —
+still applies; that is what `hud.gd`/`hotbar.gd` do for `"game_hud"`.)
 
 ### The opening cutscene
 
@@ -1007,7 +1084,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-270 checks across every phase built so far; exits non-zero on failure. It exists because a
+309 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

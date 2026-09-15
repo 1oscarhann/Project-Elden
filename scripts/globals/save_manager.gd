@@ -49,6 +49,7 @@ func save_game(slot: int) -> bool:
 		"day_night": DayNight.save_data(),
 		"game_state": GameState.save_data(),
 		"inventory": Inventory.save_data(),
+		"weather": Weather.save_data(),
 		"world": world.save_data(),
 		"player": _player_data(world),
 	}
@@ -142,6 +143,7 @@ func apply_data(data: Dictionary) -> void:
 	DayNight.load_data(data.get("day_night", {}))
 	GameState.load_data(data.get("game_state", {}))
 	Inventory.load_data(data.get("inventory", {}))
+	Weather.load_data(data.get("weather", {}))
 	var world := _find_world()
 	if world != null:
 		world.load_data(data.get("world", {}))

@@ -32,6 +32,12 @@ theme_type_variation = &"PanelText"
 theme_override_font_sizes/font_size = 11
 text = "Day 1   08:00   DAY"
 
+[node name="Weather" type="Label" parent="Frame/Readout"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "Clear"
+
 [node name="WarmthLabel" type="Label" parent="Frame/Readout"]
 layout_mode = 2
 theme_type_variation = &"PanelTextDim"
