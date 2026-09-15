@@ -106,9 +106,95 @@ All art is **CraftPix free-licence** → **attribution is required**. Maintain a
 
 ## Current status
 
-**PROJECT v1 COMPLETE + Phase 11 (v2 item 0) — 225 regression checks green.** What is left is
+**PROJECT v1 COMPLETE + Phase 11, the Journal hub and the opening — 270 regression checks
+green.** What is left is
 content and a build: more recipes, more islands, seasons, a desktop/web export and an itch.io
 page. All of that is data or packaging, not new systems.
+
+### The opening cutscene
+
+Letterbox bars, typewriter text over a dimmed island, and one camera shot. Scoped deliberately
+small — **a placeholder, not a sequencer.**
+
+- **⚠️ Item 5 of the brief was "diagnose why the previous intro never appeared on a fresh save".
+  There was no previous intro.** `git log --all --name-only` over all 43 commits matches nothing
+  containing intro/cutscene/opening/prolog, and no `intro_shown` flag existed in any script. It
+  was never built, and nothing was deleted. The flag logic below is therefore new, not repaired.
+- **⚠️ `intro_shown` defaults to TRUE, unlike every other saved field.** A save written before
+  the intro existed has no such key, and its owner has plainly already started playing —
+  defaulting to false would replay the opening at them every time they pressed Continue.
+  **`SaveManager.new_game()` passing `{"intro_shown": false}` is the ONLY place it is ever
+  cleared.** Both directions are asserted.
+- **A save can never carry `false`.** The intro pauses the tree, so the day roll cannot fire an
+  autosave during it; and the intro's `_unhandled_input` marks every keypress handled, so the
+  pause menu (and its Save) is unreachable while it runs.
+- **⚠️ The camera shot is an `AnimationPlayer` on the Camera2D, NOT a Tween**, and its animation
+  is its own file (`resources/animations/intro_camera.tres`) rather than an inline SubResource —
+  so it opens in the editor and can be re-keyframed into a multi-shot sequence with no script
+  change. `intro.gd` only calls `play("intro")` and waits; it does not know what is animated or
+  for how long.
+  - **`PlayerCamera.cinematic`** is the whole integration point: while set, the camera stops
+    following the player and leaves `position` and `zoom` to the animation, but **still rounds
+    onto whole pixels and still shakes**. The placeholder animates `zoom` only (1.55 -> 2.0).
+  - **`process_priority = 10` on the camera** so its `_process` runs AFTER the child
+    AnimationPlayer in the idle frame. That ordering is what would let a future keyframed
+    *position* track still come out pixel-snapped — the animation writes a fractional value and
+    the camera rounds it before the frame draws.
+- **⚠️ The dim is a screen-reading shader, because `modulate` CANNOT desaturate** — it only
+  multiplies, so it can tint and darken and nothing else. `intro_dim.gdshader` samples
+  `hint_screen_texture`, which **does work on the GL Compatibility renderer** (this was the one
+  real risk in the build and it was measured, not assumed). `amount` is tweened 0 -> 1 so 0 is a
+  provable no-op.
+  - **Measured, same frame with the effect off and on: saturation 0.483 -> 0.145 (30.0% of
+    original), brightness 0.666 -> 0.260 (39.0%), 230398 of 230400 px changed, peak delta
+    711/765.** Darkened and drained, not black — the island is plainly still there.
+- **The HUD and hotbar are HIDDEN during the opening, not merely dimmed.** Dimmed, the keybind
+  hints were still perfectly legible through the shader and read as clutter — visible in the
+  first shot. Both join a **`game_hud`** group in their own `_ready` and the intro lifts them by
+  group call, so it holds no path to either.
+  - **⚠️ Use the literal `"game_hud"` in hud.gd/hotbar.gd, not `Intro.HUD_GROUP`.** A global
+    `class_name` resolves through a cache those scripts are parsed before: it failed with
+    `Parse Error: Identifier "Intro" not declared in the current scope` on both.
+- One press finishes a half-typed line, the next moves on — never both, or a fast reader skips a
+  line they never saw. The `▼` only blinks once the line is finished **and** settled, so it means
+  "there is more" rather than "I am busy", and it blinks on **wall clock** rather than
+  accumulated delta (headless runs `_process` uncapped, which would strobe it).
+- **⚠️ The intro pausing the tree hangs any test that is not `PROCESS_MODE_ALWAYS`** — the first
+  verification run sat there until the shell timeout. Both `tools/intro_boot.gd` and
+  `tools/intro_shots.gd` set it in `_init`, and the regression cannot run the intro at all for
+  the same reason: it asserts the decision and the wiring, and `intro_shots.gd` is the
+  behavioural proof.
+
+      xvfb-run -a godot --path . --rendering-driver opengl3 res://tools/intro_shots.tscn
+
+### The Journal hub — and the gap it closes
+
+**⚠️ THE ACTUAL BUG: only `Inventory.selected_item_id()` could ever be acted on**, so an item
+sitting past slot 8 was dead weight until it was shuffled into the hotbar. That is now fixed at
+the Inventory level, not the UI level.
+
+- **`Inventory` gained an any-slot block**: `use_slot`, `slot_is_usable`, `slot_is_placeable`,
+  `swap_slots`, `merge_slots`, `move_slot`, `discard_slot`. `use_slot` only spends the item if
+  `GameState.consume` says it did something, so clicking a log is a no-op rather than a loss.
+  Asserted with a **full hotbar**, so the food genuinely lands in slot 8+.
+- **One panel, one key (J).** `Journal.tscn` replaces `InventoryPanel.tscn` and `CraftMenu.tscn`
+  (both deleted, along with their scripts). Tabs come from a `TABS` const list, so Farming,
+  Cooking and Fishing add an entry plus a builder method rather than another standalone menu.
+  **Tab, C and B still work** — they open the journal *on* their tab, so muscle memory survives.
+- **`ItemSlot` is now clickable and draggable**, and emits `activated(index)` rather than knowing
+  what a journal is. Drag-and-drop is Godot's own protocol (`_get_drag_data` / `_can_drop_data` /
+  `_drop_data`); `move_slot` merges when it can and swaps when it cannot, so every drop target
+  behaves identically and the hotbar↔bag direction needs no special case (**a hotbar slot IS an
+  inventory slot** — same array).
+  - **⚠️ Godot never tells a slot its drag ended**, so every slot clears its own dim on
+    `NOTIFICATION_DRAG_END`. Without it the source stays dimmed after a cancelled drag.
+- **A drop onto an already-full stack falls through to a swap.** Harmless and reversible; what is
+  asserted is that nothing breaches `max_stack` and no items are created or destroyed.
+- **⚠️ Two of the first journal checks were the TEST being wrong again**, not the code — a
+  partial-pour remainder and that full-stack swap. Trace the semantics before asserting them.
+- Clicking a **hotbar** slot selects it; clicking the one already selected uses it. Selection
+  stays the first meaning there, because the number keys point at the hotbar.
+- The HUD hint now reads `J journal · 1-8 hotbar · Esc menu`.
 
 ### Phase 11 notes — Hunger & Thirst (first v2 item)
 
@@ -921,7 +1007,7 @@ Five things were called out on review. All five were real; two of my earlier cla
 
     godot --headless --path . res://tools/regression_check.tscn
 
-225 checks across every phase built so far; exits non-zero on failure. It exists because a
+270 checks across every phase built so far; exits non-zero on failure. It exists because a
 careless edit silently deleted the entire warmth system (`_process`, `warmth_rate`, `is_warmed`,
 `speed_factor`, …) and that phase's own tests never touched warmth, so it went unnoticed until a
 HUD call blew up. **Do not skip it.**

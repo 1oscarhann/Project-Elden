@@ -121,7 +121,10 @@ func new_game() -> void:
 	_pending = {}
 	Inventory.clear()
 	DayNight.load_data({"time_of_day": DayNight.start_time_of_day, "day": 1})
-	GameState.load_data({})
+	# The ONLY place the intro flag is cleared. Everywhere else — including a
+	# save file too old to carry the key — defaults it to already-shown, so the
+	# opening cannot replay itself at someone mid-playthrough.
+	GameState.load_data({"intro_shown": false})
 	get_tree().change_scene_to_file(MAIN_SCENE)
 
 

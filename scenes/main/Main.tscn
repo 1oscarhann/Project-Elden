@@ -5,9 +5,9 @@
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Hotbar.tscn" id="hotbar"]
-[ext_resource type="PackedScene" path="res://scenes/ui/InventoryPanel.tscn" id="bag"]
-[ext_resource type="PackedScene" path="res://scenes/ui/CraftMenu.tscn" id="craft"]
+[ext_resource type="PackedScene" path="res://scenes/ui/Journal.tscn" id="journal"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PauseMenu.tscn" id="pause"]
+[ext_resource type="PackedScene" path="res://scenes/ui/Intro.tscn" id="intro"]
 [ext_resource type="Script" path="res://scripts/ui/pickup_feed.gd" id="script_feed"]
 [ext_resource type="Script" path="res://scripts/main/game.gd" id="script_game"]
 
@@ -30,9 +30,9 @@ script = ExtResource("script_rooms")
 
 [node name="Hotbar" parent="." instance=ExtResource("hotbar")]
 
-[node name="InventoryPanel" parent="." instance=ExtResource("bag")]
+[node name="Journal" parent="." instance=ExtResource("journal")]
 
-[node name="CraftMenu" parent="." instance=ExtResource("craft")]
+[node name="Intro" parent="." instance=ExtResource("intro")]
 
 [node name="PickupFeed" type="Node" parent="."]
 script = ExtResource("script_feed")

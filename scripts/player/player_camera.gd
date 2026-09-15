@@ -36,6 +36,16 @@ const GROUP := "player_camera"
 ## toggled and compared rather than taken on trust.
 @export var pixel_snap := true
 
+## While true the camera stops following the player, leaving `position` and
+## `zoom` free for an AnimationPlayer to drive. Shake and pixel rounding still
+## run, because a cutscene wants those as much as play does.
+##
+## This is the whole integration point for cinematics: set it, keyframe the
+## camera, clear it. Nothing else in this file knows what an intro is, and the
+## placeholder zoom animation can be replaced with a multi-shot pan without
+## touching a line here.
+var cinematic := false
+
 ## 0..1. Squared before use so small knocks stay gentle and only big ones bite.
 var _trauma := 0.0
 ## The un-rounded follow position. Kept separately so rounding never feeds back
@@ -46,6 +56,11 @@ var _started := false
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	# Runs AFTER every default-priority node in the idle frame, the child
+	# AnimationPlayer included. That ordering is what lets a keyframed position
+	# still come out pixel-snapped: the animation writes a fractional value,
+	# and this rounds it before the frame is drawn.
+	process_priority = 10
 	# Godot's own smoothing is replaced, not layered on top of.
 	position_smoothing_enabled = false
 	top_level = true
@@ -90,6 +105,13 @@ func pixel_error() -> Vector2:
 
 func _process(delta: float) -> void:
 	_update_shake(delta)
+	if cinematic:
+		# An animation owns the position now. Keep it on whole pixels and keep
+		# the follow position in step, so clearing the flag resumes from where
+		# the camera actually is rather than snapping back.
+		_smoothed = global_position
+		_commit()
+		return
 	# Exponential rather than a plain lerp by delta: this is the same easing at
 	# any frame rate, which matters because headless runs _process uncapped.
 	var weight: float = 1.0 - exp(-smoothing_speed * delta)

@@ -1,0 +1,105 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/intro.gd" id="script_intro"]
+[ext_resource type="Shader" path="res://assets/shaders/intro_dim.gdshader" id="shader_dim"]
+
+[sub_resource type="ShaderMaterial" id="mat_dim"]
+shader = ExtResource("shader_dim")
+shader_parameter/amount = 0.0
+shader_parameter/desaturate = 0.72
+shader_parameter/darken = 0.55
+shader_parameter/cool = Vector3(0.72, 0.8, 1)
+
+[node name="Intro" type="CanvasLayer"]
+; Above the HUD and hotbar, below the pause menu's 8 — the opening covers the
+; game's own UI, but Esc still belongs to the pause menu.
+layer = 7
+script = ExtResource("script_intro")
+
+[node name="Root" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Dim" type="ColorRect" parent="Root"]
+material = SubResource("mat_dim")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BarTop" type="ColorRect" parent="Root"]
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+offset_bottom = 0.0
+color = Color(0, 0, 0, 1)
+mouse_filter = 2
+
+[node name="BarBottom" type="ColorRect" parent="Root"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+offset_top = 0.0
+color = Color(0, 0, 0, 1)
+mouse_filter = 2
+
+[node name="Box" type="PanelContainer" parent="Root"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+offset_left = 28.0
+offset_top = -132.0
+offset_right = -28.0
+offset_bottom = -76.0
+mouse_filter = 2
+
+[node name="Pad" type="MarginContainer" parent="Root/Box"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="Line" type="Label" parent="Root/Box/Pad"]
+layout_mode = 2
+theme_type_variation = &"PanelText"
+theme_override_font_sizes/font_size = 9
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Arrow" type="Label" parent="Root/Box"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 9
+text = "▼"
+
+[node name="Skip" type="Label" parent="Root"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+offset_top = -30.0
+offset_bottom = -18.0
+theme_override_colors/font_color = Color(0.85, 0.85, 0.82, 0.65)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 7
+text = "press any key"
+horizontal_alignment = 1
+mouse_filter = 2

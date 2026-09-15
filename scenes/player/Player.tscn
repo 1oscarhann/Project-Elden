@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="script_player"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="script_camera"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/world/leaf_drift.gd" id="script_leaves"]
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="frames_player"]
 [ext_resource type="Texture2D" uid="uid://caouxh8cvdqd4" path="res://assets/characters/shadow_single.png" id="tex_shadow"]
+[ext_resource type="Animation" path="res://resources/animations/intro_camera.tres" id="anim_intro"]
 
 [sub_resource type="Gradient" id="glow_falloff"]
 offsets = PackedFloat32Array(0, 1)
@@ -40,6 +41,11 @@ fill_to = Vector2(1, 0.5)
 ; never left. A character wants to be narrower than the gaps it walks through.
 size = Vector2(12, 8)
 
+[sub_resource type="AnimationLibrary" id="anim_lib_intro"]
+_data = {
+"intro": ExtResource("anim_intro")
+}
+
 [node name="Player" type="CharacterBody2D"]
 motion_mode = 1
 script = ExtResource("script_player")
@@ -64,6 +70,14 @@ script = ExtResource("script_camera")
 zoom = Vector2(2, 2)
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
+
+[node name="IntroAnim" type="AnimationPlayer" parent="Camera2D"]
+; Inert unless the intro plays it. Lives here rather than being built in code
+; so it can be opened and re-keyframed in the editor — that is the whole point
+; of using an AnimationPlayer for a single placeholder shot.
+libraries = {
+"": SubResource("anim_lib_intro")
+}
 
 [node name="Glow" type="PointLight2D" parent="."]
 script = ExtResource("script_light")

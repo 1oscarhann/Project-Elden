@@ -12,7 +12,7 @@ extends Node2D
 ## Bumped whenever checks are added. A runtime error aborts the phase it is in
 ## and every phase after it, and without this the truncated run still reported
 ## ALL GREEN because nothing had actually *failed*.
-const EXPECTED_CHECKS := 225
+const EXPECTED_CHECKS := 270
 
 var f := 0
 var fails := 0
@@ -79,6 +79,8 @@ func _process(delta: float) -> void:
 	_phase9()
 	_phase10()
 	_phase11()
+	_journal()
+	_intro()
 	print("\n-- Phase 9b: wildlife over time --")
 
 
@@ -884,6 +886,184 @@ func _phase11() -> void:
 	GameState.set_hunger(GameState.MAX_HUNGER)
 	GameState.set_thirst(GameState.MAX_THIRST)
 	Inventory.clear()
+
+
+## The journal hub, and the functional gap it exists to close.
+##
+## Before it, `Inventory.selected_item_id()` was the only item the game could
+## act on, so anything past slot 8 was dead weight until it was shuffled
+## forward. These check the thing the owner actually asked to be able to do:
+## eat food sitting in the main grid, and drag items around.
+func _journal() -> void:
+	print("\n-- Journal hub --")
+	var main := get_node("Main")
+	var journal := main.get_node_or_null("Journal")
+	ck(journal != null, "Main has a Journal panel")
+	ck(main.get_node_or_null("InventoryPanel") == null
+		and main.get_node_or_null("CraftMenu") == null,
+		"and the old standalone bag and craft windows are gone")
+	var tab_ids: Array = []
+	for tab in journal.TABS:
+		tab_ids.append(tab["id"])
+	ck(tab_ids.has("inventory") and tab_ids.has("crafting") and tab_ids.has("build"),
+		"one panel holds the bag, crafting and building", str(tab_ids))
+	ck(InputMap.has_action("toggle_journal"), "and opens on a single key")
+	journal.set_open(true)
+	ck(journal.is_open(), "the journal opens")
+	journal._show_tab("crafting")
+	ck(journal.current_tab() == "crafting", "and switches tab on a click")
+	journal.set_open(false)
+	ck(not journal.is_open(), "and closes again")
+	# Every tab bar button is wired, or a tab would be unreachable by mouse.
+	var wired := 0
+	for id in tab_ids:
+		if journal._tab_buttons[id].pressed.get_connections().size() > 0:
+			wired += 1
+	ck(wired == tab_ids.size(), "every tab label is clickable", "%d of %d" % [wired, tab_ids.size()])
+
+	# --- ⚠️ the gap: an item is used WHERE IT SITS ---
+	Inventory.clear()
+	var stack := ItemDB.max_stack("wood")
+	Inventory.add_item("wood", stack * Inventory.HOTBAR_SIZE)
+	Inventory.add_item("cooked_meat", 1)
+	var meat_slot := -1
+	for i in Inventory.SLOT_COUNT:
+		if Inventory.slot(i)["id"] == "cooked_meat":
+			meat_slot = i
+			break
+	ck(meat_slot >= Inventory.HOTBAR_SIZE,
+		"with a full hotbar, food lands in the bag proper", "slot %d" % meat_slot)
+	ck(Inventory.slot_is_usable(meat_slot), "the bag slot reports itself usable")
+	GameState.set_hunger(20.0)
+	var before_hunger := GameState.hunger
+	ck(Inventory.use_slot(meat_slot),
+		"and it can be EATEN THERE, with no shuffling to the hotbar first")
+	ck(GameState.hunger > before_hunger, "hunger actually goes up",
+		"%.0f -> %.0f" % [before_hunger, GameState.hunger])
+	ck(Inventory.is_slot_empty(meat_slot), "and the item is spent")
+	ck(not Inventory.use_slot(0), "a log in the same bag is still not food")
+
+	# --- drag to rearrange ---
+	Inventory.clear()
+	Inventory.add_item("wood", 2)
+	Inventory.add_item("stone", 3)
+	Inventory.move_slot(0, 1)
+	ck(Inventory.slot(0)["id"] == "stone" and Inventory.slot(1)["id"] == "wood",
+		"dragging one item onto a different one swaps them")
+	Inventory.clear()
+	Inventory.add_item("wood", stack * 2)
+	# Two partial stacks of the same thing cannot arise from add_item, which
+	# tops up on purpose — so carve one out to test the pour.
+	Inventory.discard_slot(0, stack - 2)
+	Inventory.move_slot(1, 0)
+	ck(Inventory.slot(0)["count"] == stack,
+		"dragging onto a matching stack merges up to max_stack",
+		"%d of %d" % [Inventory.slot(0)["count"], stack])
+	ck(Inventory.slot(1)["count"] == 2,
+		"and the overflow stays behind instead of vanishing",
+		"%d left" % Inventory.slot(1)["count"])
+	var total := Inventory.count("wood")
+	ck(total == stack + 2, "no wood was created or destroyed", "%d" % total)
+	# A drag onto an ALREADY FULL stack cannot pour, so it falls through to a
+	# swap. Harmless and reversible — what matters is that it does not overflow
+	# the cap or invent items, which is what this asserts.
+	Inventory.clear()
+	Inventory.add_item("wood", stack + 1)
+	Inventory.move_slot(1, 0)
+	ck(Inventory.slot(0)["count"] <= stack and Inventory.slot(1)["count"] <= stack,
+		"a drag onto a full stack never breaches max_stack",
+		"%d / %d" % [Inventory.slot(0)["count"], Inventory.slot(1)["count"]])
+	ck(Inventory.count("wood") == stack + 1, "and still creates nothing",
+		"%d" % Inventory.count("wood"))
+
+	# --- the slot widget can be dragged and clicked at all ---
+	var slot_script := load("res://scripts/ui/item_slot.gd") as Script
+	var methods: Array = []
+	for m in slot_script.get_script_method_list():
+		methods.append(m["name"])
+	ck(methods.has("_get_drag_data") and methods.has("_can_drop_data")
+		and methods.has("_drop_data"),
+		"slots implement Godot's drag-and-drop protocol")
+	var signals: Array = []
+	for sig in slot_script.get_script_signal_list():
+		signals.append(sig["name"])
+	ck(signals.has("activated"), "and report a click by signal, holding no path to a menu")
+	# The hotbar listens too, or clicking a hotbar slot would be dead.
+	var bar := main.get_node("Hotbar")
+	var bar_slot: ItemSlot = bar._slots[0]
+	ck(bar_slot.activated.get_connections().size() > 0, "the hotbar acts on clicks as well")
+
+	Inventory.clear()
+
+
+## The opening, and the flag that keeps it to once.
+##
+## ⚠️ The behaviour itself cannot be run from here: the intro PAUSES THE TREE,
+## and a paused tree stops this suite dead. So this asserts the decision and the
+## wiring, and `tools/intro_shots.gd` runs the real thing end to end.
+func _intro() -> void:
+	print("\n-- Opening --")
+	var main := get_node("Main")
+	ck(main.get_node_or_null("Intro") == null,
+		"the intro removes itself when it has already been seen")
+	var scene := load("res://scenes/ui/Intro.tscn") as PackedScene
+	ck(scene != null, "and the scene it removes itself from is still there")
+	var probe := scene.instantiate()
+	ck(probe.lines.size() == 3, "three lines of opening text", "%d" % probe.lines.size())
+	ck(probe.lines[0].begins_with("Your plane went down"), "the plane")
+	ck(probe.lines[1].begins_with("You swam until"), "the swim")
+	ck(probe.lines[2].begins_with("This island"), "and the island")
+	ck(probe.chars_per_second > 0.0, "text types out rather than appearing at once",
+		"%.0f chars/sec" % probe.chars_per_second)
+	ck(probe.get_node("Root/BarTop") != null and probe.get_node("Root/BarBottom") != null,
+		"letterbox bars, top and bottom")
+	var dim: ColorRect = probe.get_node("Root/Dim")
+	ck(dim.material is ShaderMaterial, "the background is dimmed by a shader, not a flat black")
+	# ⚠️ Modulate cannot desaturate — it only multiplies — so this HAS to read
+	# the screen. If the uniform ever goes, the dim silently becomes a tint.
+	ck((dim.material as ShaderMaterial).shader.code.contains("hint_screen_texture"),
+		"which reads the screen, so it can drain colour and not just darken it")
+	probe.queue_free()
+
+	# --- the flag ---
+	ck(GameState.intro_shown, "the flag defaults to already-seen")
+	GameState.load_data({})
+	ck(GameState.intro_shown,
+		"a save with no such key counts as seen, so an old file cannot replay it")
+	GameState.load_data({"intro_shown": false})
+	ck(not GameState.intro_shown, "and only an explicit false arms it")
+	ck(GameState.save_data().has("intro_shown"), "the flag is written to the save")
+	GameState.intro_shown = true
+	var round_trip := GameState.save_data()
+	GameState.intro_shown = false
+	GameState.load_data(round_trip)
+	ck(GameState.intro_shown, "and survives the round trip, so it plays ONCE")
+
+	# --- the camera shot ---
+	var camera := get_tree().get_nodes_in_group(PlayerCamera.GROUP)[0] as PlayerCamera
+	var anim := camera.get_node_or_null("IntroAnim") as AnimationPlayer
+	ck(anim != null, "the camera carries an AnimationPlayer, not a hardcoded tween")
+	ck(anim != null and anim.has_animation("intro"),
+		"with the placeholder shot on it", str(anim.get_animation_list()) if anim else "")
+	if anim != null and anim.has_animation("intro"):
+		var a := anim.get_animation("intro")
+		var paths: Array = []
+		for i in a.get_track_count():
+			paths.append(str(a.track_get_path(i)))
+		ck(a.length > 1.0, "that lasts long enough to read under", "%.0fs" % a.length)
+		ck(paths.size() >= 1, "and actually animates the camera", str(paths))
+		# The file, not an inline SubResource — that is what makes it openable
+		# and re-keyframable in the editor without touching any script.
+		ck(a.resource_path.begins_with("res://resources/animations/"),
+			"kept in its own file so it can be re-keyframed in the editor",
+			a.resource_path)
+	ck("cinematic" in camera, "the camera can hand control to an animation")
+	var held := camera.global_position
+	camera.cinematic = true
+	camera._process(0.5)
+	ck(camera.global_position == held, "and stops following the player while it does")
+	camera.cinematic = false
+	camera.snap_to_target()
 
 
 ## Free, buildable cells spiralling out from `centre`, nearest first.

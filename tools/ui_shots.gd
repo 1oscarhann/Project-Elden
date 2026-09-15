@@ -1,7 +1,7 @@
 extends Node2D
 
-## Visual check for the UI theme: opens the bag and the craft menu and shoots
-## each, so a theme that loads but renders wrong cannot pass unnoticed.
+## Visual check for the UI theme: opens the journal on each of its tabs and
+## shoots it, so a theme that loads but renders wrong cannot pass unnoticed.
 ##
 ##     xvfb-run -a godot --path . --rendering-driver opengl3 \
 ##         res://tools/ui_shots.tscn
@@ -42,8 +42,12 @@ func _process(delta: float) -> void:
 			DayNight.paused = true
 			DayNight.time_of_day = 0.45
 			Inventory.clear()
+			# Deliberately more kinds than the hotbar holds: the last few land
+			# past slot 8, which is exactly the case the journal exists for.
 			for pair in [["wood", 24], ["stone", 9], ["plank", 12], ["fibre", 7],
-					["berries", 5], ["rope", 2], ["venison", 3], ["bone", 4]]:
+					["berries", 5], ["rope", 2], ["venison", 3], ["bone", 4],
+					["cooked_meat", 3], ["campfire_kit", 1], ["fruit", 6],
+					["raw_meat", 2], ["workbench", 1]]:
 				Inventory.add_item(pair[0], pair[1])
 			wait = 0.6
 		1:
@@ -59,7 +63,11 @@ func _process(delta: float) -> void:
 			wait = 0.7
 		4:
 			shot("03_crafting")
-			wait = 0.2
+			act("toggle_build")
+			wait = 0.7
 		5:
+			shot("04_build")
+			wait = 0.2
+		6:
 			get_tree().quit(0)
 	step += 1

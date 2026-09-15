@@ -54,6 +54,11 @@ var warmth := MAX_WARMTH
 var hunger := MAX_HUNGER
 var thirst := MAX_THIRST
 
+## True once the opening has played, so it plays ONCE per save and never again.
+## Lives here rather than in the intro scene because the intro is instanced
+## fresh with every scene load and would have nowhere to remember it.
+var intro_shown := true
+
 ## How many heat sources currently contain the player. Phase 4's campfire just
 ## calls add/remove on its area signals, so none of the warmth maths below ever
 ## needs to know what a campfire is.
@@ -219,7 +224,8 @@ func drink(amount: float) -> bool:
 ## Health and hunger are named by the Phase 10 spec but do not exist yet; when
 ## they do, they go here and old saves still load because get() has a default.
 func save_data() -> Dictionary:
-	return {"warmth": warmth, "hunger": hunger, "thirst": thirst}
+	return {"warmth": warmth, "hunger": hunger, "thirst": thirst,
+		"intro_shown": intro_shown}
 
 
 func load_data(data: Dictionary) -> void:
@@ -234,6 +240,13 @@ func load_data(data: Dictionary) -> void:
 	set_hunger(float(data.get("hunger", MAX_HUNGER)))
 	thirst = -1.0
 	set_thirst(float(data.get("thirst", MAX_THIRST)))
+	# ⚠️ Defaults to TRUE, unlike every other field here, and that is deliberate.
+	# A save written before the intro existed has no such key, and its owner has
+	# self-evidently already started their game — defaulting to false would
+	# replay the opening at them every time they pressed Continue. A brand new
+	# game says so explicitly (see SaveManager.new_game), which is the only way
+	# the flag ever comes back false.
+	intro_shown = bool(data.get("intro_shown", true))
 
 
 ## Called by heat sources as the player enters and leaves their radius.

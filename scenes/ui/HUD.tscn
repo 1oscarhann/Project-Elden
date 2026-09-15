@@ -75,8 +75,8 @@ show_percentage = false
 layout_mode = 2
 theme_type_variation = &"PanelTextDim"
 theme_override_font_sizes/font_size = 7
-text = "WASD · Shift run · E use · Tab bag
-C craft · B build · F eat · E drink · Esc menu"
+text = "WASD · Shift run · E use · F eat
+J journal · 1-8 hotbar · Esc menu"
 
 [node name="Toast" type="Label" parent="."]
 modulate = Color(1, 1, 1, 0)

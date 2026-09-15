@@ -1,11 +1,11 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/ui/inventory_panel.gd" id="script_panel"]
+[ext_resource type="Script" path="res://scripts/ui/journal.gd" id="script_journal"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ItemSlot.tscn" id="scene_slot"]
 
-[node name="InventoryPanel" type="CanvasLayer"]
+[node name="Journal" type="CanvasLayer"]
 layer = 3
-script = ExtResource("script_panel")
+script = ExtResource("script_journal")
 slot_scene = ExtResource("scene_slot")
 
 [node name="Root" type="Control" parent="."]
@@ -22,26 +22,37 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -116.0
-offset_top = -86.0
-offset_right = 116.0
-offset_bottom = 86.0
+offset_left = -122.0
+offset_top = -100.0
+offset_right = 122.0
+offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Layout" type="VBoxContainer" parent="Root/Window"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Root/Window/Layout"]
 layout_mode = 2
 theme_type_variation = &"PanelText"
 theme_override_font_sizes/font_size = 12
-text = "Bag"
+text = "Journal"
 horizontal_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Root/Window/Layout"]
+[node name="Tabs" type="HBoxContainer" parent="Root/Window/Layout"]
 layout_mode = 2
-theme_override_constants/h_separation = 2
-theme_override_constants/v_separation = 2
-columns = 6
+alignment = 1
+theme_override_constants/separation = 3
+
+[node name="Pages" type="MarginContainer" parent="Root/Window/Layout"]
+custom_minimum_size = Vector2(228, 132)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Status" type="Label" parent="Root/Window/Layout"]
+layout_mode = 2
+theme_type_variation = &"PanelTextDim"
+theme_override_font_sizes/font_size = 8
+text = "Bag"
+horizontal_alignment = 1

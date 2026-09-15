@@ -56,6 +56,15 @@ var _shiver_time := 0.0
 ## Set while the one-shot harvest swing plays, so the movement state machine
 ## does not stomp the animation mid-swing.
 var _swinging := false
+var _build: Node
+
+
+## Group call from the journal's Build tab: start placing this item. Routed
+## through the player because build mode lives under it, and the journal should
+## not hold a path into the player's subtree.
+func begin_build(item_id: String) -> void:
+	if _build != null:
+		_build.begin(item_id)
 
 ## Last non-zero input direction, so idle keeps facing wherever we stopped.
 var _facing := Vector2.DOWN
@@ -67,6 +76,7 @@ func _ready() -> void:
 	# Joined by name so harvestables can ask for a swing without holding a
 	# reference to the player.
 	add_to_group("player")
+	_build = $BuildMode
 	_sprite.animation_finished.connect(_on_animation_finished)
 
 

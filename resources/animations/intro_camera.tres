@@ -1,0 +1,31 @@
+[gd_resource type="Animation" format=3]
+
+; THE PLACEHOLDER SHOT. One slow zoom-in over the opening, nothing more.
+;
+; It is a file of its own, and driven by an AnimationPlayer rather than a Tween,
+; so it can be opened in the Godot editor and re-keyframed into a proper
+; multi-shot sequence without touching intro.gd. The intro only ever calls
+; play("intro") and waits — it does not know or care how long this is, what it
+; animates, or how many tracks it grows.
+;
+; Tracks are relative to the AnimationPlayer's root node, which is the Camera2D
+; it hangs under. `.:zoom` is that camera. A future pan adds a `.:position`
+; track; player_camera.gd's `cinematic` flag already hands position over, and
+; still rounds it onto whole pixels afterwards.
+
+[resource]
+resource_name = "intro"
+length = 12.0
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:zoom")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 12),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector2(1.55, 1.55), Vector2(2, 2)]
+}

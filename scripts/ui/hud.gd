@@ -25,6 +25,9 @@ var _toast_tween: Tween
 
 
 func _ready() -> void:
+	# Lifted as one by the opening cutscene. Literal rather than Intro.HUD_GROUP:
+	# a global class_name resolves through a cache this script is parsed before.
+	add_to_group("game_hud")
 	DayNight.ticked.connect(_on_ticked)
 	GameState.warmth_changed.connect(_on_warmth_changed)
 	GameState.cold_changed.connect(_on_cold_changed)

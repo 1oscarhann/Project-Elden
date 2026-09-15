@@ -19,6 +19,10 @@ const BLOCKED := Color(1.0, 0.4, 0.35, 0.5)
 var _active := false
 var _ghost: Sprite2D
 var _item_id := ""
+## Set when build mode was opened for a particular item (from the journal),
+## rather than for whatever the hotbar has selected. Cleared when it is placed
+## or build mode is left, so the hotbar takes over again afterwards.
+var _forced_item := ""
 var _cell := Vector2i.ZERO
 var _valid := false
 
@@ -35,11 +39,21 @@ func is_active() -> bool:
 	return _active
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("toggle_build"):
-		set_active(not _active)
-		get_viewport().set_input_as_handled()
+## Start placing a specific item, rather than whatever the hotbar happens to
+## have selected. This is how the journal's Build tab reaches build mode — it
+## changes how building is REACHED, not how it works.
+func begin(item_id: String) -> void:
+	var item := ItemDB.get_item(item_id)
+	if item == null or not item.is_placeable() or not Inventory.has(item_id, 1):
 		return
+	_forced_item = item_id
+	set_active(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# ⚠️ `toggle_build` is NOT handled here any more — it opens the journal on
+	# its Build tab, which is where you choose what to place. Build mode is
+	# entered from there via begin(), and Esc leaves it.
 	if not _active:
 		return
 	if event.is_action_pressed("ui_cancel"):
@@ -57,6 +71,8 @@ func set_active(value: bool) -> void:
 	_ghost.visible = false
 	if _active:
 		_rebuild_ghost()
+	else:
+		_forced_item = ""
 
 
 func _process(_delta: float) -> void:
@@ -107,7 +123,12 @@ func _on_inventory_changed() -> void:
 ## The ghost wears the placed scene's own sprite, so it always matches what
 ## will appear — no separate preview art to keep in sync.
 func _rebuild_ghost() -> void:
-	_item_id = Inventory.selected_item_id()
+	# A journal pick wins over the hotbar, but only while it is still held.
+	if not _forced_item.is_empty() and Inventory.has(_forced_item, 1):
+		_item_id = _forced_item
+	else:
+		_forced_item = ""
+		_item_id = Inventory.selected_item_id()
 	var item := ItemDB.get_item(_item_id)
 	if item == null or not item.is_placeable():
 		_ghost.texture = null

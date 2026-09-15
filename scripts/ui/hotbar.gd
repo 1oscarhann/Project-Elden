@@ -18,13 +18,33 @@ var _slots: Array[ItemSlot] = []
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	# Lifted as one by the opening cutscene. Literal rather than Intro.HUD_GROUP:
+	# a global class_name resolves through a cache this script is parsed before.
+	add_to_group("game_hud")
 	for i in Inventory.HOTBAR_SIZE:
 		var slot: ItemSlot = slot_scene.instantiate()
 		_row.add_child(slot)
 		slot.setup(i)
+		slot.activated.connect(_on_slot_activated)
 		_slots.append(slot)
 	Inventory.inventory_changed.connect(_refresh)
 	_refresh()
+
+
+## Clicking a hotbar slot selects it; clicking the one already selected uses it.
+## Same reach as the journal's grid — an item is acted on where it sits — but
+## selection stays the first meaning here, because the hotbar is the thing the
+## number keys point at.
+func _on_slot_activated(index: int) -> void:
+	if index != Inventory.selected_hotbar:
+		Inventory.select_hotbar(index)
+		Audio.play("ui")
+		return
+	if Inventory.slot_is_usable(index):
+		if Inventory.use_slot(index):
+			Audio.play("eat")
+	elif Inventory.slot_is_placeable(index):
+		get_tree().call_group("player", "begin_build", Inventory.slot(index)["id"])
 
 
 func _unhandled_input(event: InputEvent) -> void:

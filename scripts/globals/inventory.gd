@@ -154,6 +154,96 @@ func selected_item_id() -> String:
 	return slot(selected_hotbar)["id"]
 
 
+## --- direct slot manipulation ----------------------------------------------
+##
+## Everything below works on ANY slot, hotbar or not. Before these existed the
+## only item you could act on was the selected hotbar item, so anything sitting
+## in the bag was dead weight until you shuffled it forward.
+
+## Swaps two slots outright. Used by drag-and-drop when the two cannot merge.
+func swap_slots(a: int, b: int) -> void:
+	if a == b or not _valid(a) or not _valid(b):
+		return
+	var keep := _slots[a]
+	_slots[a] = _slots[b]
+	_slots[b] = keep
+	inventory_changed.emit()
+
+
+## Pours `from` into `to` when they hold the same item, respecting max_stack.
+## Returns true if anything moved. A partial pour leaves the remainder behind
+## rather than destroying it.
+func merge_slots(from: int, to: int) -> bool:
+	if from == to or not _valid(from) or not _valid(to):
+		return false
+	var id: String = _slots[from]["id"]
+	if id.is_empty() or _slots[to]["id"] != id:
+		return false
+	var room: int = ItemDB.max_stack(id) - int(_slots[to]["count"])
+	if room <= 0:
+		return false
+	var moved: int = mini(room, int(_slots[from]["count"]))
+	_slots[to]["count"] = int(_slots[to]["count"]) + moved
+	_slots[from]["count"] = int(_slots[from]["count"]) - moved
+	if int(_slots[from]["count"]) <= 0:
+		_slots[from] = {"id": "", "count": 0}
+	inventory_changed.emit()
+	return true
+
+
+## What a drag from one slot onto another should do: stack them if they can
+## stack, otherwise swap. One call so every drop target behaves the same.
+func move_slot(from: int, to: int) -> void:
+	if merge_slots(from, to):
+		return
+	swap_slots(from, to)
+
+
+## Throws away `count` from one slot. Deliberately destructive and deliberately
+## not "drop on the ground" — there is no item entity to drop into the world.
+func discard_slot(index: int, count: int = -1) -> bool:
+	if not _valid(index) or int(_slots[index]["count"]) <= 0:
+		return false
+	var taking: int = int(_slots[index]["count"]) if count < 0 else mini(count, int(_slots[index]["count"]))
+	_slots[index]["count"] = int(_slots[index]["count"]) - taking
+	if int(_slots[index]["count"]) <= 0:
+		_slots[index] = {"id": "", "count": 0}
+	inventory_changed.emit()
+	return true
+
+
+## Uses the item in ANY slot — the whole point of this block. Consuming is
+## GameState's business; this only spends the item if it actually did something.
+func use_slot(index: int) -> bool:
+	if not _valid(index):
+		return false
+	var id: String = _slots[index]["id"]
+	if id.is_empty() or int(_slots[index]["count"]) <= 0:
+		return false
+	if not GameState.consume(id):
+		return false
+	discard_slot(index, 1)
+	return true
+
+
+## True when the item in this slot has a meaningful primary action.
+func slot_is_usable(index: int) -> bool:
+	var item := ItemDB.get_item(slot(index)["id"])
+	if item == null:
+		return false
+	return item.stat("warmth", 0.0) > 0.0 or item.stat("hunger", 0.0) > 0.0 \
+		or item.stat("thirst", 0.0) > 0.0
+
+
+func slot_is_placeable(index: int) -> bool:
+	var item := ItemDB.get_item(slot(index)["id"])
+	return item != null and item.is_placeable()
+
+
+func _valid(index: int) -> bool:
+	return index >= 0 and index < _slots.size()
+
+
 ## --- persistence -----------------------------------------------------------
 
 ## Saved as the raw slot array rather than totals, because WHERE a thing sits
